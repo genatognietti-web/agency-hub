@@ -933,46 +933,23 @@
   /* DELIVERABLE CARD */
   .gc-deliverable {
     margin-top: 8px;
-    background: #1e1e1e;
-    border: 1px solid var(--gold);
-    border-radius: 10px;
-    overflow: hidden;
-    max-width: 340px;
+    max-width: 100%;
   }
 
-  .gc-deliv-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background: rgba(201,168,76,0.08);
-    border-bottom: 1px solid rgba(201,168,76,0.2);
-  }
-
-  .gc-deliv-title {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--gold);
-    letter-spacing: 0.04em;
-  }
-
-  .gc-deliv-icon { font-size: 0.9rem; }
+  .gc-deliv-header { display: none; }
 
   .gc-deliv-body {
-    padding: 10px 12px;
-    font-size: 0.75rem;
-    color: var(--muted);
-    line-height: 1.55;
-    max-height: 120px;
-    overflow-y: auto;
+    font-size: 0.82rem;
+    color: var(--text);
+    line-height: 1.6;
     white-space: pre-wrap;
+    word-break: break-word;
   }
 
   .gc-deliv-footer {
-    padding: 8px 12px;
-    border-top: 1px solid rgba(201,168,76,0.15);
     display: flex;
     gap: 8px;
+    margin-top: 10px;
   }
 
   .gc-deliv-btn {
@@ -1558,11 +1535,6 @@ function gcAddMsg(agentId, text) {
   const div = document.createElement('div');
   div.className = 'gc-msg ' + (isGina ? 'gina' : 'agent') + (cta ? ' has-cta' : '');
 
-  // Short preview if it's a long deliverable
-  const displayText = isDeliverable
-    ? text.slice(0, 160).trim() + (text.length > 160 ? '…' : '')
-    : text;
-
   // CTA badge
   const ctaBadge = cta ? `<span class="gc-cta-badge">@Gina · Action needed</span>` : '';
 
@@ -1571,8 +1543,10 @@ function gcAddMsg(agentId, text) {
       <img class="gc-avatar" src="data:image/jpeg;base64,${PHOTOS[photoKey]}" alt="${name}">
       <div>
         ${ctaBadge}
-        <div class="gc-bubble">${displayText}</div>
-        ${isDeliverable ? buildDeliverableCard(agentId, text) : ''}
+        <div class="gc-bubble">
+          ${text}
+          ${isDeliverable ? buildDeliverableCard(agentId, text) : ''}
+        </div>
       </div>
     </div>`;
 
@@ -1592,18 +1566,12 @@ function gcAddMsg(agentId, text) {
 }
 
 function buildDeliverableCard(agentId, fullText) {
-  const title = getDeliverableTitle(agentId, fullText);
   const driveLink = (AGENTS.find(a => a.id === agentId) || {}).driveLink || 'https://drive.google.com/';
-  const safeText = fullText.replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const encodedText = encodeURIComponent(fullText);
 
   return `
     <div class="gc-deliverable">
-      <div class="gc-deliv-header">
-        <span class="gc-deliv-title">${title}</span>
-        <span class="gc-deliv-icon">📎</span>
-      </div>
-      <div class="gc-deliv-body">${safeText}</div>
+      <div class="gc-deliv-body"></div>
       <div class="gc-deliv-footer">
         <button class="gc-deliv-btn primary" onclick="window.open('${driveLink}','_blank')">Open Drive Folder ↗</button>
         <button class="gc-deliv-btn secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodedText}')).then(()=>showToast('Copied to clipboard'))">Copy Content</button>
