@@ -320,72 +320,6 @@
 
   .chat-btn:hover { border-color: var(--gold); color: var(--gold); }
 
-  /* DELIVERABLE AREA */
-  .deliverable-area {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    min-height: 200px;
-    margin-bottom: 0;
-  }
-
-  .deliverable-label {
-    font-size: 0.7rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 12px;
-  }
-
-  .deliverable-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-    animation: fadeIn 0.4s ease;
-  }
-
-  .deliverable-item:last-child { border-bottom: none; }
-
-  .d-avatar {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-  }
-
-  .d-content { flex: 1; }
-
-  .d-name {
-    font-size: 0.72rem;
-    color: var(--gold);
-    font-weight: 500;
-    margin-bottom: 3px;
-  }
-
-  .d-text {
-    font-size: 0.78rem;
-    color: var(--text);
-    line-height: 1.5;
-  }
-
-  .d-link {
-    display: inline-block;
-    margin-top: 5px;
-    font-size: 0.7rem;
-    color: var(--gold);
-    text-decoration: none;
-    border: 1px solid var(--gold);
-    padding: 2px 8px;
-    border-radius: 4px;
-    transition: all 0.2s;
-  }
-
-  .d-link:hover { background: var(--gold); color: var(--black); }
-
   /* CHAT PANEL */
   .chat-container {
     background: var(--card);
@@ -800,91 +734,174 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* STANDUP TWO-COLUMN LAYOUT */
+  /* STANDUP GROUP CHAT */
   .standup-layout {
     display: grid;
-    grid-template-columns: 1fr 360px;
+    grid-template-columns: 1fr 320px;
     gap: 28px;
     align-items: start;
   }
 
   .standup-left { min-width: 0; }
-
   .standup-right { min-width: 0; }
 
-  .standup-reply-wrap {
+  /* Group chat thread */
+  .group-chat {
     background: var(--card);
-    border: 1px solid var(--gold);
-    border-radius: 12px;
-    padding: 16px;
-    margin-top: 16px;
-    animation: fadeIn 0.4s ease;
-  }
-
-  .standup-reply-label {
-    font-size: 0.7rem;
-    color: var(--gold);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 10px;
-  }
-
-  .standup-reply-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .standup-thread {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    max-height: 280px;
-    overflow-y: auto;
+    height: 520px;
   }
 
-  .thread-msg {
+  .group-chat-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--charcoal);
     display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    animation: fadeIn 0.3s ease;
+    align-items: center;
+    gap: 10px;
   }
 
-  .thread-msg.user { flex-direction: row-reverse; }
+  .group-chat-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text);
+  }
 
-  .thread-msg img {
+  .group-chat-sub {
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+
+  .group-avatars {
+    display: flex;
+    margin-right: 4px;
+  }
+
+  .group-avatars img {
     width: 28px;
     height: 28px;
     border-radius: 50%;
     object-fit: cover;
+    object-position: center 20%;
+    border: 2px solid var(--charcoal);
+    margin-left: -8px;
+  }
+
+  .group-avatars img:first-child { margin-left: 0; }
+
+  .group-chat-msgs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .group-chat-msgs::-webkit-scrollbar { width: 4px; }
+  .group-chat-msgs::-webkit-scrollbar-track { background: transparent; }
+  .group-chat-msgs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* iMessage-style bubbles */
+  .gc-msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 78%;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .gc-msg.gina {
+    align-self: flex-end;
+    align-items: flex-end;
+  }
+
+  .gc-msg.agent {
+    align-self: flex-start;
+    align-items: flex-start;
+  }
+
+  .gc-sender {
+    font-size: 0.65rem;
+    font-weight: 500;
+    margin-bottom: 3px;
+    padding: 0 4px;
+  }
+
+  .gc-msg.agent .gc-sender { color: var(--gold); }
+
+  .gc-bubble-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 7px;
+  }
+
+  .gc-msg.gina .gc-bubble-row { flex-direction: row-reverse; }
+
+  .gc-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center 20%;
     flex-shrink: 0;
+    margin-bottom: 2px;
   }
 
-  .thread-bubble {
-    max-width: 80%;
-    padding: 8px 12px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    line-height: 1.5;
+  .gc-bubble {
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    word-break: break-word;
   }
 
-  .thread-msg.agent .thread-bubble {
-    background: #222;
+  .gc-msg.agent .gc-bubble {
+    background: #2a2a2a;
     border: 1px solid var(--border);
     border-bottom-left-radius: 4px;
     color: var(--text);
   }
 
-  .thread-msg.user .thread-bubble {
+  .gc-msg.gina .gc-bubble {
     background: var(--gold);
     color: var(--black);
     border-bottom-right-radius: 4px;
     font-weight: 500;
   }
 
+  .gc-typing {
+    display: flex;
+    gap: 4px;
+    padding: 10px 14px;
+    background: #2a2a2a;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    width: fit-content;
+  }
+
+  /* Chat input */
+  .group-chat-input {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--charcoal);
+  }
+
+  /* Inline agent chat */
   .inline-chat-wrap {
     margin-top: 20px;
     animation: fadeIn 0.4s ease;
+  }
+
+  @media (max-width: 1100px) {
+    .standup-layout { grid-template-columns: 1fr; }
+    .standup-right { order: -1; }
   }
 
   /* RESPONSIVE */
@@ -982,40 +999,41 @@
     <div class="standup-header">
       <div>
         <div class="section-title">Morning Standup</div>
-        <div class="section-sub">Ellara routes priorities to all agents and delivers the daily brief.</div>
+        <div class="section-sub">Your daily brief — talk back, ask questions, get answers.</div>
       </div>
       <button class="run-btn" id="standupBtn" onclick="runStandup()">Run Standup</button>
     </div>
 
-    <!-- STANDUP LAYOUT: deliverables left, chat right -->
     <div class="standup-layout">
-      <div class="standup-left">
-        <div class="deliverable-area" id="deliverableArea">
-          <div class="deliverable-label">Agent Deliverables</div>
-          <div class="empty-state">
-            <div class="icon">◈</div>
-            Run your standup to activate the team.
-          </div>
-        </div>
 
-        <!-- Reply to Ellara -->
-        <div id="standupReplyWrap" style="display:none;" class="standup-reply-wrap">
-          <div class="standup-reply-label">Reply to Ellara</div>
-          <div class="standup-reply-row">
-            <input type="text" id="standupReplyInput" class="chat-input" placeholder="Type your response..." onkeydown="if(event.key==='Enter') sendStandupReply()">
-            <button class="send-btn" id="standupReplyBtn" onclick="sendStandupReply()">Send</button>
+      <!-- LEFT: Group chat -->
+      <div class="standup-left">
+        <div class="group-chat">
+          <div class="group-chat-header">
+            <div class="group-avatars" id="gcAvatars"></div>
+            <div>
+              <div class="group-chat-title">The Whole Game · Leadership</div>
+              <div class="group-chat-sub">Ellara · Stefan · Julian · Damon · Mira · Elijah · Cassian</div>
+            </div>
           </div>
-          <div id="standupThread" class="standup-thread"></div>
+          <div class="group-chat-msgs" id="gcMsgs">
+            <div class="empty-state" id="gcEmpty">
+              <div class="icon">◈</div>
+              Run your standup to start the conversation.
+            </div>
+          </div>
+          <div class="group-chat-input">
+            <input type="text" class="chat-input" id="gcInput" placeholder="Reply to the team..." onkeydown="if(event.key==='Enter') sendGcReply()">
+            <button class="send-btn" id="gcSendBtn" onclick="sendGcReply()">Send</button>
+          </div>
         </div>
       </div>
 
+      <!-- RIGHT: Team grid + inline agent DM -->
       <div class="standup-right">
-        <div>
-          <div class="section-title" style="font-size:1.1rem; margin-bottom:16px;">The Team</div>
-          <div class="agent-grid" id="agentGrid"></div>
-        </div>
+        <div class="section-title" style="font-size:1.1rem; margin-bottom:16px;">The Team</div>
+        <div class="agent-grid" id="agentGrid"></div>
 
-        <!-- Inline agent chat -->
         <div id="inlineChatWrap" style="display:none;" class="inline-chat-wrap">
           <div class="chat-container" id="inlineChatContainer">
             <div class="chat-header" id="inlineChatHeader">
@@ -1029,10 +1047,10 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
 
-  </div>
 
   <!-- TRACKER PANEL -->
   <div class="panel" id="panel-tracker">
@@ -1336,313 +1354,206 @@ function getAgentPreview(id) {
 }
 
 // ============================================================
-// STANDUP
+// STANDUP — iMessage-style group chat
 // ============================================================
+let gcHistory = [];  // full conversation for context
+
+function gcAddMsg(agentId, text) {
+  const empty = document.getElementById('gcEmpty');
+  if (empty) empty.remove();
+
+  const container = document.getElementById('gcMsgs');
+  const isGina = agentId === 'gina';
+  const agent = isGina ? null : AGENTS.find(a => a.id === agentId);
+  const photoKey = isGina ? 'gina' : agent.photo;
+  const name = isGina ? 'Gina' : agent.name;
+
+  const div = document.createElement('div');
+  div.className = 'gc-msg ' + (isGina ? 'gina' : 'agent');
+
+  const bubbleRow = `
+    <div class="gc-bubble-row">
+      <img class="gc-avatar" src="data:image/jpeg;base64,${PHOTOS[photoKey]}" alt="${name}">
+      <div class="gc-bubble">${text}</div>
+    </div>`;
+
+  div.innerHTML = (isGina ? '' : `<div class="gc-sender">${name}</div>`) + bubbleRow;
+
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function gcAddTyping(agentId) {
+  const container = document.getElementById('gcMsgs');
+  const agent = AGENTS.find(a => a.id === agentId);
+
+  const div = document.createElement('div');
+  div.className = 'gc-msg agent';
+  div.id = 'gc-typing-' + agentId;
+  div.innerHTML = `
+    <div class="gc-sender">${agent.name}</div>
+    <div class="gc-bubble-row">
+      <img class="gc-avatar" src="data:image/jpeg;base64,${PHOTOS[agent.photo]}" alt="${agent.name}">
+      <div class="gc-typing">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function gcRemoveTyping(agentId) {
+  const el = document.getElementById('gc-typing-' + agentId);
+  if (el) el.remove();
+}
+
+async function gcFetch(agentId, messages, isMain) {
+  const agent = AGENTS.find(a => a.id === agentId);
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const start = new Date('2026-04-11');
+  const day = Math.max(1, Math.floor((new Date() - start) / (1000 * 60 * 60 * 24)) + 1);
+
+  // Build a plain-language system prompt addition
+  const plainLang = `
+IMPORTANT FORMATTING RULES FOR THIS STANDUP:
+- Write exactly like a text message to a colleague — short, plain, conversational
+- NO bullet points, NO numbered lists, NO bold text, NO headers, NO markdown
+- NO formal openers like "Good morning" or closers like "Best regards"
+- Just say what needs saying, how you'd say it in a quick text
+- Max 3-4 sentences unless truly necessary
+- Sound like a real person on a team, not a report`;
+
+  const systemPrompt = isMain
+    ? agent.systemPrompt + plainLang + `
+
+Today is ${today}, Day ${day} of 90. Give your standup: top 3 priorities for today, one task per agent, and end with one direct question for Gina. Plain text only.`
+    : agent.systemPrompt + plainLang + `
+
+Today is ${today}, Day ${day} of 90. Give your standup update in 2-3 sentences max. Lead with your department's most important action today. Plain text only.`;
+
+  gcAddTyping(agentId);
+
+  const response = await fetch('/.netlify/functions/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: isMain ? 400 : 180,
+      system: systemPrompt,
+      messages: messages
+    })
+  });
+
+  if (!response.ok) throw new Error(response.status + ': ' + await response.text());
+  const data = await response.json();
+  if (!data.content || !data.content[0]) throw new Error('Empty response');
+  const text = data.content[0].text.trim();
+
+  gcRemoveTyping(agentId);
+  gcAddMsg(agentId, text);
+  return text;
+}
+
 async function runStandup() {
   if (!apiKey) { openModal(); return; }
 
   const btn = document.getElementById('standupBtn');
   btn.disabled = true;
   btn.textContent = 'Running...';
+  gcHistory = [];
 
-  const area = document.getElementById('deliverableArea');
-  area.innerHTML = '<div class="deliverable-label">Agent Deliverables</div>';
+  // Build group avatar strip
+  const avatarStrip = document.getElementById('gcAvatars');
+  if (avatarStrip) {
+    avatarStrip.innerHTML = '';
+    AGENTS.forEach(a => {
+      const img = document.createElement('img');
+      img.src = `data:image/jpeg;base64,${PHOTOS[a.photo]}`;
+      img.alt = a.name;
+      avatarStrip.appendChild(img);
+    });
+  }
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const start = new Date('2026-04-11');
   const day = Math.max(1, Math.floor((new Date() - start) / (1000 * 60 * 60 * 24)) + 1);
 
-  const ellara = AGENTS.find(a => a.id === 'ellara');
-  const prompt = `Today is ${today}. It is Day ${day} of 90 for The Whole Game, LLC. We are in Phase 1: Foundation. 
-
-Current status:
-- Products built: Coach HR Starter Bundle, Parent/Athlete Conduct Bundle, Compliance & Incident Master System
-- Revenue: $0 (products not yet priced or listed)
-- Social media: a few posts about the project concept
-- Hub: rebuilt and operational
-- Gina is building this solo alongside a full-time job
-
-Deliver the daily executive brief. Be specific. Name today's top 3 priorities. Assign one clear task to each agent. End with one direct question for Gina that moves something forward today.`;
+  const kickoff = `Today is ${today}, Day ${day} of 90. Products built, revenue at $0, need first paying customer. Stripe is set up. Website design in progress (ready Friday). Run standup.`;
 
   try {
-    // Ellara brief first
-    await streamDeliverable(ellara, prompt, area, true);
+    // Ellara leads
+    const ellaraText = await gcFetch('ellara', [{ role: 'user', content: kickoff }], true);
+    gcHistory.push({ role: 'user', content: kickoff });
+    gcHistory.push({ role: 'assistant', content: ellaraText });
 
-    // Staggered agent reports
-    const agentOrder = [
-      { agent: AGENTS.find(a => a.id === 'stefan'), delay: 2500 },
-      { agent: AGENTS.find(a => a.id === 'julian'), delay: 5000 },
-      { agent: AGENTS.find(a => a.id === 'damon'), delay: 7500 },
-      { agent: AGENTS.find(a => a.id === 'mira'), delay: 10000 },
-      { agent: AGENTS.find(a => a.id === 'elijah'), delay: 12500 },
-      { agent: AGENTS.find(a => a.id === 'cassian'), delay: 15000 },
-    ];
+    // Agents check in with staggered delays
+    const agentOrder = ['stefan','julian','damon','mira','elijah','cassian'];
+    const delays     = [2000, 4000, 6000, 8000, 10000, 12000];
 
-    agentOrder.forEach(({ agent, delay }) => {
+    agentOrder.forEach((id, i) => {
       setTimeout(async () => {
-        const agentPrompt = `Today is ${today}, Day ${day} of 90. The Whole Game is in Phase 1. Products exist but aren't priced or live yet. Revenue is at $0. Give your standup report in 2-3 sentences max. Be specific. Lead with your department's most important action for today.`;
-        await streamDeliverable(agent, agentPrompt, area, false);
-      }, delay);
+        const prompt = `Ellara just opened standup: "${ellaraText.slice(0,200)}". Give your quick check-in.`;
+        await gcFetch(id, [{ role: 'user', content: prompt }], false);
+        if (i === agentOrder.length - 1) {
+          btn.disabled = false;
+          btn.textContent = 'Run Standup';
+        }
+      }, delays[i]);
     });
 
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.textContent = 'Run Standup';
-      // Show reply area
-      const replyWrap = document.getElementById('standupReplyWrap');
-      if (replyWrap) replyWrap.style.display = 'block';
-    }, 18000);
-
-  } catch (err) {
-    area.innerHTML += `<div style="color:var(--pink); font-size:0.78rem; padding:12px; line-height:1.6;">
-      <strong>Error:</strong> ${err.message}<br>
-      <span style="color:var(--muted)">If you see 404: the Netlify function is not deployed yet. Make sure your folder has netlify/functions/claude.js and redeploy.<br>
-      If you see 401: check your API key in Netlify environment variables.</span>
-    </div>`;
+  } catch(err) {
+    gcAddMsg('ellara', 'Error: ' + err.message);
     btn.disabled = false;
     btn.textContent = 'Run Standup';
   }
 }
 
-async function streamDeliverable(agent, prompt, area, isMain) {
-  const ext = 'jpeg';
-  const item = document.createElement('div');
-  item.className = 'deliverable-item';
-  item.innerHTML = `
-    <img class="d-avatar" src="data:image/jpeg;base64,${PHOTOS[agent.photo]}" alt="${agent.name}">
-    <div class="d-content">
-      <div class="d-name">${agent.name} · ${agent.role}</div>
-      <div class="d-text" id="stream-${agent.id}"><span class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span></div>
-      <a class="d-link" href="${agent.driveLink}" target="_blank">Open in Drive</a>
-    </div>`;
-  area.appendChild(item);
-
-  const payload = {
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: isMain ? 500 : 200,
-    system: agent.systemPrompt,
-    messages: [{ role: 'user', content: prompt }]
-  };
-
-  let response;
-  try {
-    response = await fetch('/.netlify/functions/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch(fetchErr) {
-    throw new Error('Connection failed: ' + fetchErr.message);
-  }
-
-  if (!response.ok) {
-    const errBody = await response.text();
-    throw new Error(`${response.status}: ${errBody.slice(0,120)}`);
-  }
-  const data = await response.json();
-  if (!data.content || !data.content[0]) throw new Error('Empty response from API');
-  const text = data.content[0].text;
-
-  const el = document.getElementById(`stream-${agent.id}`);
-  el.innerHTML = '';
-  // Typewriter effect
-  let i = 0;
-  const interval = setInterval(() => {
-    if (i < text.length) {
-      el.textContent += text[i];
-      i++;
-    } else {
-      clearInterval(interval);
-    }
-  }, 12);
-}
-
-// ============================================================
-// CHAT
-// ============================================================
-function selectAgent(agentId) {
-  activeAgent = AGENTS.find(a => a.id === agentId);
-  chatHistory = [];
-
-  // Update active states on agent cards
-  AGENTS.forEach(a => {
-    const card = document.getElementById('card-' + a.id);
-    if (card) card.classList.toggle('active-chat', a.id === agentId);
-  });
-
-  // Show the inline chat wrap
-  const wrap = document.getElementById('inlineChatWrap');
-  if (wrap) wrap.style.display = 'block';
-
-  // Update header
-  document.getElementById('inlineChatHeader').innerHTML = `
-    <img src="data:image/jpeg;base64,${PHOTOS[activeAgent.photo]}" alt="${activeAgent.name}">
-    <div>
-      <div class="chat-header-name">${activeAgent.name}</div>
-      <div class="chat-header-role">${activeAgent.role}</div>
-    </div>`;
-
-  // Clear messages and add greeting
-  const msgs = document.getElementById('chatMessages');
-  msgs.innerHTML = '';
-  addMessage('agent', `Good to hear from you, Gina. What do you need from me today?`);
-
-  // Scroll into view
-  setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-}
-
-function addMessage(role, text) {
-  const msgs = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = `msg ${role}`;
-
-  if (role === 'agent' && activeAgent) {
-    div.innerHTML = `
-      <img class="msg-avatar" src="data:image/jpeg;base64,${PHOTOS[activeAgent.photo]}" alt="${activeAgent.name}">
-      <div class="msg-bubble">${text}</div>`;
-  } else {
-    div.innerHTML = `
-      <img class="msg-avatar" src="data:image/jpeg;base64,${PHOTOS.gina}" alt="Gina">
-      <div class="msg-bubble">${text}</div>`;
-  }
-
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-function showTyping() {
-  const msgs = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'msg agent';
-  div.id = 'typing-indicator';
-  div.innerHTML = `
-    <img class="msg-avatar" src="data:image/jpeg;base64,${PHOTOS[activeAgent.photo]}" alt="">
-    <div class="typing-indicator">
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-    </div>`;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-function removeTyping() {
-  const t = document.getElementById('typing-indicator');
-  if (t) t.remove();
-}
-
-async function sendMessage() {
-  if (!activeAgent) { showToast('Select an agent first.'); return; }
+async function sendGcReply() {
   if (!apiKey) { openModal(); return; }
-
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text) return;
-
-  input.value = '';
-  addMessage('user', text);
-  chatHistory.push({ role: 'user', content: text });
-
-  document.getElementById('sendBtn').disabled = true;
-  showTyping();
-
-  try {
-    let response;
-    try {
-      response = await fetch('/.netlify/functions/claude', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 600,
-          system: activeAgent.systemPrompt,
-          messages: chatHistory
-        })
-      });
-    } catch(fetchErr) {
-      throw new Error('Connection failed: ' + fetchErr.message);
-    }
-
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`${response.status}: ${errBody.slice(0,120)}`);
-    }
-    const data = await response.json();
-    if (!data.content || !data.content[0]) throw new Error('Empty response');
-    const reply = data.content[0].text;
-
-    chatHistory.push({ role: 'assistant', content: reply });
-    removeTyping();
-    addMessage('agent', reply);
-  } catch (err) {
-    removeTyping();
-    addMessage('agent', `Error: ${err.message}. If 404 — the Netlify function is missing. If 401 — check your API key in Netlify environment variables.`);
-  }
-
-  document.getElementById('sendBtn').disabled = false;
-}
-
-// ============================================================
-// STANDUP REPLY (two-way conversation with Ellara)
-// ============================================================
-let standupThread = [];
-
-function addThreadMsg(role, text) {
-  const ellara = AGENTS.find(a => a.id === 'ellara');
-  const thread = document.getElementById('standupThread');
-  const div = document.createElement('div');
-  div.className = 'thread-msg ' + role;
-  if (role === 'agent') {
-    div.innerHTML = `<img src="data:image/jpeg;base64,${PHOTOS[ellara.photo]}" alt="Ellara"><div class="thread-bubble">${text}</div>`;
-  } else {
-    div.innerHTML = `<img src="data:image/jpeg;base64,${PHOTOS.gina}" alt="Gina"><div class="thread-bubble">${text}</div>`;
-  }
-  thread.appendChild(div);
-  thread.scrollTop = thread.scrollHeight;
-}
-
-async function sendStandupReply() {
-  if (!apiKey) { openModal(); return; }
-  const input = document.getElementById('standupReplyInput');
-  const btn = document.getElementById('standupReplyBtn');
+  const input = document.getElementById('gcInput');
+  const btn = document.getElementById('gcSendBtn');
   const text = input.value.trim();
   if (!text) return;
 
   input.value = '';
   btn.disabled = true;
-  addThreadMsg('user', text);
-  standupThread.push({ role: 'user', content: text });
+  gcAddMsg('gina', text);
+  gcHistory.push({ role: 'user', content: text });
 
-  const ellara = AGENTS.find(a => a.id === 'ellara');
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const start = new Date('2026-04-11');
   const day = Math.max(1, Math.floor((new Date() - start) / (1000 * 60 * 60 * 24)) + 1);
 
-  const systemContext = ellara.systemPrompt + `
-
-This is a follow-up conversation after the morning standup on Day ${day}. Gina is responding to your standup question. Stay in character. Be concise, direct, and move things forward.`;
+  const ellara = AGENTS.find(a => a.id === 'ellara');
+  const plainLang = `
+IMPORTANT: Reply like a text message. Short, direct, no markdown, no bullets, no headers. Sound human.`;
 
   try {
+    gcAddTyping('ellara');
     const response = await fetch('/.netlify/functions/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        system: systemContext,
-        messages: standupThread
+        max_tokens: 250,
+        system: ellara.systemPrompt + plainLang + ` Today is ${today}, Day ${day}. This is an ongoing group standup chat.`,
+        messages: gcHistory
       })
     });
 
     if (!response.ok) throw new Error('API error ' + response.status);
     const data = await response.json();
-    if (!data.content || !data.content[0]) throw new Error('Empty response');
-    const reply = data.content[0].text;
-    standupThread.push({ role: 'assistant', content: reply });
-    addThreadMsg('agent', reply);
+    const reply = data.content[0].text.trim();
+    gcRemoveTyping('ellara');
+    gcAddMsg('ellara', reply);
+    gcHistory.push({ role: 'assistant', content: reply });
   } catch(err) {
-    addThreadMsg('agent', 'Error: ' + err.message);
+    gcRemoveTyping('ellara');
+    gcAddMsg('ellara', 'Error: ' + err.message);
   }
+
   btn.disabled = false;
 }
 
