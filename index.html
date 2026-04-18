@@ -1688,13 +1688,20 @@ async function runStandup() {
     const agentOrder = ['stefan','julian','damon','mira','elijah','cassian'];
     const delays     = [2000, 4000, 6000, 8000, 10000, 12000];
 
+    // Collect agent responses for tracker sync
+    const agentResponses = {};
+
     agentOrder.forEach((id, i) => {
       setTimeout(async () => {
         const prompt = `Ellara just opened standup: "${ellaraText.slice(0,200)}". Give your quick check-in.`;
-        await gcFetch(id, [{ role: 'user', content: prompt }], false);
+        const agentText = await gcFetch(id, [{ role: 'user', content: prompt }], false);
+        agentResponses[id] = agentText;
+
         if (i === agentOrder.length - 1) {
           btn.disabled = false;
           btn.textContent = 'Run Standup';
+          // All agents done — trigger tracker sync
+          setTimeout(() => ellaraTrackerSync(ellaraText, agentResponses), 1500);
         }
       }, delays[i]);
     });
@@ -1751,6 +1758,93 @@ Reply like a text in a group chat. Short, direct, no markdown, no bullets, no he
   }
 
   btn.disabled = false;
+}
+
+// ============================================================
+// ELLARA TRACKER SYNC — fires after standup, auto-updates tasks
+// ============================================================
+async function ellaraTrackerSync(ellaraOpener, agentResponses) {
+  const ellara = AGENTS.find(a => a.id === 'ellara');
+
+  // Build task manifest for Ellara to evaluate
+  const allTasks = [
+    ...tasks.phase1.map(t => ({ ...t, phase: 'phase1' })),
+    ...tasks.phase2.map(t => ({ ...t, phase: 'phase2' })),
+    ...tasks.phase3.map(t => ({ ...t, phase: 'phase3' }))
+  ];
+
+  const taskManifest = allTasks.map(t =>
+    `${t.id} | ${t.text} | currently: ${t.done ? 'DONE' : 'OPEN'}`
+  ).join('\n');
+
+  const standupTranscript = Object.entries(agentResponses)
+    .map(([id, text]) => `${id.toUpperCase()}: ${text}`)
+    .join('\n\n');
+
+  const syncPrompt = `You just ran a standup. Based on what was reported, review this task list and determine which tasks should now be marked complete.
+
+STANDUP OPENER (you):
+${ellaraOpener}
+
+AGENT REPORTS:
+${standupTranscript}
+
+CURRENT TASK LIST:
+${taskManifest}
+
+INSTRUCTIONS:
+- Only mark a task DONE if there is clear evidence in the standup that it was completed
+- Do not mark tasks done based on vague intent or "in progress" language
+- Return ONLY a raw JSON object mapping task IDs to true (done) or false (not done)
+- Include every task ID in your response
+- No explanation, no markdown, no code fences — just the JSON object
+
+Example format:
+{"t1":false,"t2":true,"t3":false}`;
+
+  // Show a subtle "Ellara is updating tracker..." message in standup
+  gcAddMsg('ellara', 'Reviewing standup against the tracker now...');
+
+  try {
+    const response = await fetch('/.netlify/functions/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        system: ellara.systemPrompt + ' You are performing a tracker sync. Return ONLY raw JSON — no markdown, no explanation.',
+        messages: [{ role: 'user', content: syncPrompt }]
+      })
+    });
+
+    if (!response.ok) throw new Error('Tracker sync failed: ' + response.status);
+    const data = await response.json();
+    const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
+    const updates = JSON.parse(raw);
+
+    // Apply updates to all phases
+    let changed = 0;
+    ['phase1', 'phase2', 'phase3'].forEach(phase => {
+      tasks[phase].forEach(task => {
+        if (updates.hasOwnProperty(task.id) && updates[task.id] !== task.done) {
+          task.done = updates[task.id];
+          changed++;
+        }
+      });
+    });
+
+    saveTasks();
+    buildTaskList();
+    updateStats();
+
+    const msg = changed > 0
+      ? `Tracker updated — ${changed} task${changed > 1 ? 's' : ''} marked complete. Check the Tracker tab.`
+      : 'Tracker reviewed — no new completions detected from today\'s standup.';
+    gcAddMsg('ellara', msg);
+
+  } catch(err) {
+    gcAddMsg('ellara', 'Tracker sync error: ' + err.message);
+  }
 }
 
 // ============================================================
