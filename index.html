@@ -1434,7 +1434,7 @@ let masterMemory = null;
 async function loadMasterMemory() {
   try {
     // Fetch raw JSON from GitHub repo — update this URL to match your repo
-    const MEMORY_URL = 'https://raw.githubusercontent.com/genatognietti-web/agency-hub/main/ellara-memory.json';
+    const MEMORY_URL = 'https://raw.githubusercontent.com/genatognietti-web/ellara-agent/main/ellara-memory.json';
     const res = await fetch(MEMORY_URL + '?t=' + Date.now()); // cache bust
     if (!res.ok) throw new Error('Memory file not found');
     masterMemory = await res.json();
