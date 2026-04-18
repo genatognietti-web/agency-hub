@@ -904,7 +904,116 @@
     .standup-right { order: -1; }
   }
 
-  /* RESPONSIVE */
+  /* @ MENTION ALERT */
+  .gc-msg.has-cta .gc-bubble {
+    border: 1px solid var(--gold) !important;
+    box-shadow: 0 0 12px rgba(201,168,76,0.18);
+  }
+
+  .gc-cta-badge {
+    display: inline-block;
+    background: var(--gold);
+    color: var(--black);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-bottom: 5px;
+    margin-left: 4px;
+  }
+
+  /* DELIVERABLE CARD */
+  .gc-deliverable {
+    margin-top: 8px;
+    background: #1e1e1e;
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: 340px;
+  }
+
+  .gc-deliv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(201,168,76,0.08);
+    border-bottom: 1px solid rgba(201,168,76,0.2);
+  }
+
+  .gc-deliv-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+  }
+
+  .gc-deliv-icon { font-size: 0.9rem; }
+
+  .gc-deliv-body {
+    padding: 10px 12px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.55;
+    max-height: 120px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+
+  .gc-deliv-footer {
+    padding: 8px 12px;
+    border-top: 1px solid rgba(201,168,76,0.15);
+    display: flex;
+    gap: 8px;
+  }
+
+  .gc-deliv-btn {
+    font-size: 0.68rem;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: "DM Sans", sans-serif;
+    letter-spacing: 0.03em;
+    transition: all 0.2s;
+    border: none;
+  }
+
+  .gc-deliv-btn.primary {
+    background: var(--gold);
+    color: var(--black);
+    font-weight: 600;
+  }
+
+  .gc-deliv-btn.primary:hover { background: var(--gold-light); }
+
+  .gc-deliv-btn.secondary {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .gc-deliv-btn.secondary:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* NOTIFICATION DOT on tab */
+  .tab-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background: var(--gold);
+    border-radius: 50%;
+    margin-left: 5px;
+    vertical-align: middle;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+    /* RESPONSIVE */
   @media (max-width: 1100px) {
     .standup-layout { grid-template-columns: 1fr; }
     .standup-right { order: -1; }
@@ -1358,6 +1467,51 @@ function getAgentPreview(id) {
 // ============================================================
 let gcHistory = [];  // full conversation for context
 
+function parseDeliverable(text) {
+  // Detect if the message contains an actual deliverable (doc content)
+  const signals = [
+    /here(?:'s| is) (?:the|your|a) /i,
+    /draft(?:ed)?:/i,
+    /pricing tier/i,
+    /bundle/i,
+    /here are/i,
+    /i(?:'ve| have) (?:put together|drafted|written|created|built)/i,
+    /deliverable/i,
+    /document/i,
+  ];
+  return signals.some(r => r.test(text)) && text.length > 200;
+}
+
+function hasCTA(text) {
+  const ctaSignals = [
+    /@gina/i,
+    /gina,? can you/i,
+    /gina,? (?:please|could|would)/i,
+    /need (?:you|your)/i,
+    /your call/i,
+    /decision needed/i,
+    /what(?:'s| is) your/i,
+    /let me know/i,
+    /thoughts\?/i,
+    /ready for your/i,
+    /awaiting your/i,
+  ];
+  return ctaSignals.some(r => r.test(text));
+}
+
+function getDeliverableTitle(agentId, text) {
+  const titles = {
+    julian: '📊 Pricing Draft',
+    damon:  '✍️ Copy / Content',
+    stefan: '⚙️ Ops Document',
+    mira:   '📋 Compliance Doc',
+    elijah: '🔬 Research Brief',
+    cassian:'🛠️ Tech Spec',
+    ellara: '📌 Brief',
+  };
+  return titles[agentId] || '📄 Deliverable';
+}
+
 function gcAddMsg(agentId, text) {
   const empty = document.getElementById('gcEmpty');
   if (empty) empty.remove();
@@ -1368,20 +1522,65 @@ function gcAddMsg(agentId, text) {
   const photoKey = isGina ? 'gina' : agent.photo;
   const name = isGina ? 'Gina' : agent.name;
 
+  const cta = !isGina && hasCTA(text);
+  const isDeliverable = !isGina && parseDeliverable(text);
+
   const div = document.createElement('div');
-  div.className = 'gc-msg ' + (isGina ? 'gina' : 'agent');
+  div.className = 'gc-msg ' + (isGina ? 'gina' : 'agent') + (cta ? ' has-cta' : '');
+
+  // Short preview if it's a long deliverable
+  const displayText = isDeliverable
+    ? text.slice(0, 160).trim() + (text.length > 160 ? '…' : '')
+    : text;
+
+  // CTA badge
+  const ctaBadge = cta ? `<span class="gc-cta-badge">@Gina · Action needed</span>` : '';
 
   const bubbleRow = `
     <div class="gc-bubble-row">
       <img class="gc-avatar" src="data:image/jpeg;base64,${PHOTOS[photoKey]}" alt="${name}">
-      <div class="gc-bubble">${text}</div>
+      <div>
+        ${ctaBadge}
+        <div class="gc-bubble">${displayText}</div>
+        ${isDeliverable ? buildDeliverableCard(agentId, text) : ''}
+      </div>
     </div>`;
 
   div.innerHTML = (isGina ? '' : `<div class="gc-sender">${name}</div>`) + bubbleRow;
-
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+
+  // Pulse standup tab if CTA and user is on a different tab
+  if (cta) {
+    const standupTab = document.querySelector('.tab[onclick*="standup"]');
+    if (standupTab && !standupTab.classList.contains('active')) {
+      if (!standupTab.querySelector('.tab-dot')) {
+        standupTab.insertAdjacentHTML('beforeend', '<span class="tab-dot"></span>');
+      }
+    }
+  }
 }
+
+function buildDeliverableCard(agentId, fullText) {
+  const title = getDeliverableTitle(agentId, fullText);
+  const driveLink = (AGENTS.find(a => a.id === agentId) || {}).driveLink || 'https://drive.google.com/';
+  const safeText = fullText.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const encodedText = encodeURIComponent(fullText);
+
+  return `
+    <div class="gc-deliverable">
+      <div class="gc-deliv-header">
+        <span class="gc-deliv-title">${title}</span>
+        <span class="gc-deliv-icon">📎</span>
+      </div>
+      <div class="gc-deliv-body">${safeText}</div>
+      <div class="gc-deliv-footer">
+        <button class="gc-deliv-btn primary" onclick="window.open('${driveLink}','_blank')">Open Drive Folder ↗</button>
+        <button class="gc-deliv-btn secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodedText}')).then(()=>showToast('Copied to clipboard'))">Copy Content</button>
+      </div>
+    </div>`;
+}
+
 
 function gcAddTyping(agentId) {
   const container = document.getElementById('gcMsgs');
@@ -1415,25 +1614,24 @@ async function gcFetch(agentId, messages, isMain) {
   const start = new Date('2026-04-11');
   const day = Math.max(1, Math.floor((new Date() - start) / (1000 * 60 * 60 * 24)) + 1);
 
-  // Build a plain-language system prompt addition
   const plainLang = `
-IMPORTANT FORMATTING RULES FOR THIS STANDUP:
-- Write exactly like a text message to a colleague — short, plain, conversational
-- NO bullet points, NO numbered lists, NO bold text, NO headers, NO markdown
-- NO formal openers like "Good morning" or closers like "Best regards"
-- Just say what needs saying, how you'd say it in a quick text
-- Max 3-4 sentences unless truly necessary
-- Sound like a real person on a team, not a report`;
+FORMATTING RULES — follow exactly:
+- Write like a group text to your team. Short, human, direct.
+- NO bullets, NO numbered lists, NO bold, NO headers, NO markdown whatsoever.
+- NO formal openers or sign-offs.
+- If you have a question or need Gina to act on something, start it with "@Gina" so she knows it is directed at her.
+- If you are delivering an actual document or detailed content (pricing tiers, copy, a plan, a spec), write it out in full after a short intro — this is the ONE case where longer is fine.
+- Otherwise: 2-4 sentences max.`;
 
   const systemPrompt = isMain
     ? agent.systemPrompt + plainLang + `
 
-Today is ${today}, Day ${day} of 90. Give your standup: top 3 priorities for today, one task per agent, and end with one direct question for Gina. Plain text only.`
+Today is ${today}, Day ${day} of 90. Run the standup: name the top 3 priorities, assign one clear task to each agent by name, and end with a direct @Gina question that moves something forward today.`
     : agent.systemPrompt + plainLang + `
 
-Today is ${today}, Day ${day} of 90. Give your standup update in 2-3 sentences max. Lead with your department's most important action today. Plain text only.`;
+Today is ${today}, Day ${day} of 90. Give your standup check-in. Lead with your department's single most important action today. If you have a deliverable ready, write it out in full. If you need Gina to decide or act on something, use @Gina.`;
 
-  gcAddTyping(agentId);
+    gcAddTyping(agentId);
 
   const response = await fetch('/.netlify/functions/claude', {
     method: 'POST',
@@ -1528,7 +1726,7 @@ async function sendGcReply() {
 
   const ellara = AGENTS.find(a => a.id === 'ellara');
   const plainLang = `
-IMPORTANT: Reply like a text message. Short, direct, no markdown, no bullets, no headers. Sound human.`;
+Reply like a text in a group chat. Short, direct, no markdown, no bullets, no headers. If you need Gina to act or decide, start with @Gina.`;
 
   try {
     gcAddTyping('ellara');
