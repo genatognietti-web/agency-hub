@@ -1621,11 +1621,16 @@ FORMATTING RULES — follow exactly:
 - If you are delivering an actual document or detailed content (pricing tiers, copy, a plan, a spec), write it out in full after a short intro — this is the ONE case where longer is fine.
 - Otherwise: 2-4 sentences max.`;
 
-  const systemPrompt = isMain
-    ? agent.systemPrompt + plainLang + `
+  // Pull memory context
+  const agentMemCtx  = agentId === 'ellara'
+    ? standupLogContext() + allAgentMemoryContext()
+    : dmMemoryContext(agentId);
 
-Today is ${today}, Day ${day} of 90. Run the standup: name the top 3 priorities, assign one clear task to each agent by name, and end with a direct @Gina question that moves something forward today.`
-    : agent.systemPrompt + plainLang + `
+  const systemPrompt = isMain
+    ? agent.systemPrompt + plainLang + agentMemCtx + `
+
+Today is ${today}, Day ${day} of 90. Run the standup: name the top 3 priorities, assign one clear task to each agent by name, and end with a direct @Gina question that moves something forward today. Reference recent history naturally if relevant.`
+    : agent.systemPrompt + plainLang + agentMemCtx + `
 
 Today is ${today}, Day ${day} of 90. Give your standup check-in. Lead with your department's single most important action today. If you have a deliverable ready, write it out in full. If you need Gina to decide or act on something, use @Gina.`;
 
@@ -1649,6 +1654,17 @@ Today is ${today}, Day ${day} of 90. Give your standup check-in. Lead with your 
 
   gcRemoveTyping(agentId);
   gcAddMsg(agentId, text);
+
+  // Persist to standup session buffer (flushed at end of standup)
+  if (!window._currentStandupSession) {
+    window._currentStandupSession = {
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      day,
+      messages: []
+    };
+  }
+  window._currentStandupSession.messages.push({ agentId, text });
+
   return text;
 }
 
@@ -1695,6 +1711,11 @@ async function runStandup() {
         if (i === agentOrder.length - 1) {
           btn.disabled = false;
           btn.textContent = 'Run Standup';
+          // Flush standup session to persistent memory
+          if (window._currentStandupSession) {
+            standupLogSave(window._currentStandupSession);
+            window._currentStandupSession = null;
+          }
         }
       }, delays[i]);
     });
@@ -1725,6 +1746,7 @@ async function sendGcReply() {
   const ellara = AGENTS.find(a => a.id === 'ellara');
   const plainLang = `
 Reply like a text in a group chat. Short, direct, no markdown, no bullets, no headers. If you need Gina to act or decide, start with @Gina.`;
+  const memCtx = standupLogContext() + allAgentMemoryContext();
 
   try {
     gcAddTyping('ellara');
@@ -1734,7 +1756,7 @@ Reply like a text in a group chat. Short, direct, no markdown, no bullets, no he
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 250,
-        system: ellara.systemPrompt + plainLang + ` Today is ${today}, Day ${day}. This is an ongoing group standup chat.`,
+        system: ellara.systemPrompt + plainLang + memCtx + ` Today is ${today}, Day ${day}. This is an ongoing group standup chat. Reference past standups and agent activity naturally when relevant.`,
         messages: gcHistory
       })
     });
@@ -1745,6 +1767,15 @@ Reply like a text in a group chat. Short, direct, no markdown, no bullets, no he
     gcRemoveTyping('ellara');
     gcAddMsg('ellara', reply);
     gcHistory.push({ role: 'assistant', content: reply });
+    // Save reply exchange to standup session
+    if (!window._currentStandupSession) {
+      const start = new Date('2026-04-11');
+      const d = Math.max(1, Math.floor((new Date()-start)/(1000*60*60*24))+1);
+      window._currentStandupSession = { date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), day: d, messages: [] };
+    }
+    window._currentStandupSession.messages.push({ agentId: 'gina', text });
+    window._currentStandupSession.messages.push({ agentId: 'ellara', text: reply });
+    standupLogSave(window._currentStandupSession);
   } catch(err) {
     gcRemoveTyping('ellara');
     gcAddMsg('ellara', 'Error: ' + err.message);
@@ -1871,6 +1902,277 @@ function updateStats() {
 function calcPct(arr) {
   if (!arr.length) return 0;
   return Math.round((arr.filter(t => t.done).length / arr.length) * 100);
+}
+
+// ============================================================
+// MEMORY — persistent localStorage per agent + standup log
+// ============================================================
+
+const MEMORY_KEYS = {
+  standup:  'twg_standup_log',   // array of standup sessions
+  ellara:   'twg_mem_ellara',
+  stefan:   'twg_mem_stefan',
+  damon:    'twg_mem_damon',
+  julian:   'twg_mem_julian',
+  mira:     'twg_mem_mira',
+  elijah:   'twg_mem_elijah',
+  cassian:  'twg_mem_cassian',
+};
+
+const MAX_STANDUPS  = 30;   // sessions
+const MAX_DM_TURNS  = 200;  // messages per agent (well within 5MB)
+
+// ── Read / write helpers ──────────────────────────────────────
+function memRead(key) {
+  try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+}
+
+function memWrite(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {
+    // If storage is full, trim and retry
+    if (e.name === 'QuotaExceededError') {
+      console.warn('Memory full — trimming oldest entries for', key);
+      const arr = memRead(key);
+      if (Array.isArray(arr) && arr.length > 10) {
+        memWrite(key, arr.slice(-Math.floor(arr.length / 2)));
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+      }
+    }
+  }
+}
+
+// ── Agent DM memory ──────────────────────────────────────────
+function dmMemoryLoad(agentId) {
+  return memRead(MEMORY_KEYS[agentId]) || [];
+}
+
+function dmMemorySave(agentId, messages) {
+  // Keep last MAX_DM_TURNS messages
+  const trimmed = messages.slice(-MAX_DM_TURNS);
+  memWrite(MEMORY_KEYS[agentId], trimmed);
+}
+
+function dmMemoryAppend(agentId, role, text) {
+  const history = dmMemoryLoad(agentId);
+  history.push({ role, content: text, ts: Date.now() });
+  dmMemorySave(agentId, history);
+}
+
+// Returns memory as a compact context string for system prompts
+function dmMemoryContext(agentId) {
+  const history = dmMemoryLoad(agentId);
+  if (!history.length) return '';
+  const lines = history.map(m => {
+    const who = m.role === 'user' ? 'Gina' : 'You';
+    return `${who}: ${m.content.slice(0, 300)}`;
+  });
+  return `
+
+YOUR CONVERSATION HISTORY WITH GINA (most recent last):
+${lines.join('
+')}`;
+}
+
+// ── Standup log ──────────────────────────────────────────────
+function standupLogSave(session) {
+  // session = { date, day, messages: [{agentId, text}] }
+  const log = memRead(MEMORY_KEYS.standup) || [];
+  log.push(session);
+  if (log.length > MAX_STANDUPS) log.splice(0, log.length - MAX_STANDUPS);
+  memWrite(MEMORY_KEYS.standup, log);
+}
+
+function standupLogContext() {
+  const log = memRead(MEMORY_KEYS.standup) || [];
+  if (!log.length) return '';
+  const recent = log.slice(-7); // last 7 standups
+  const lines = recent.map(s => {
+    const msgs = s.messages.map(m => `  ${m.agentId}: ${m.text.slice(0, 200)}`).join('
+');
+    return `[${s.date} · Day ${s.day}]
+${msgs}`;
+  });
+  return `
+
+RECENT STANDUP HISTORY (last ${recent.length} sessions):
+${lines.join('
+
+')}`;
+}
+
+// Summary of all agents' DM activity for Ellara
+function allAgentMemoryContext() {
+  const agentIds = ['stefan','damon','julian','mira','elijah','cassian'];
+  const parts = agentIds.map(id => {
+    const history = dmMemoryLoad(id);
+    if (!history.length) return null;
+    const last3 = history.slice(-3).map(m => {
+      const who = m.role === 'user' ? 'Gina' : (AGENTS.find(a => a.id === id) || {name: id}).name;
+      return `  ${who}: ${m.content.slice(0, 150)}`;
+    }).join('
+');
+    return `${id.toUpperCase()} recent:
+${last3}`;
+  }).filter(Boolean);
+  if (!parts.length) return '';
+  return `
+
+RECENT AGENT ACTIVITY:
+${parts.join('
+
+')}`;
+}
+
+// ── Add a "Clear Memory" util accessible from console ────────
+window.twgClearMemory = function(agentId) {
+  if (agentId) {
+    localStorage.removeItem(MEMORY_KEYS[agentId]);
+    console.log('Cleared memory for', agentId);
+  } else {
+    Object.values(MEMORY_KEYS).forEach(k => localStorage.removeItem(k));
+    console.log('All agent memory cleared');
+  }
+};
+
+// ============================================================
+// AGENT DM CHAT — inline panel
+// ============================================================
+function selectAgent(agentId) {
+  activeAgent = AGENTS.find(a => a.id === agentId);
+
+  // Load persisted DM history for this agent
+  chatHistory = dmMemoryLoad(agentId).map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content
+  }));
+
+  // Update active card highlight
+  AGENTS.forEach(a => {
+    const card = document.getElementById('card-' + a.id);
+    if (card) card.classList.toggle('active-chat', a.id === agentId);
+  });
+
+  // Show inline chat
+  const wrap = document.getElementById('inlineChatWrap');
+  if (wrap) wrap.style.display = 'block';
+
+  // Update header
+  document.getElementById('inlineChatHeader').innerHTML = `
+    <img src="data:image/jpeg;base64,${PHOTOS[activeAgent.photo]}" alt="${activeAgent.name}">
+    <div>
+      <div class="chat-header-name">${activeAgent.name}</div>
+      <div class="chat-header-role">${activeAgent.role}</div>
+    </div>`;
+
+  // Replay existing messages or show greeting
+  const msgs = document.getElementById('chatMessages');
+  msgs.innerHTML = '';
+
+  if (chatHistory.length) {
+    chatHistory.forEach(m => addMessage(m.role === 'user' ? 'user' : 'agent', m.content));
+  } else {
+    addMessage('agent', `Good to hear from you, Gina. What do you need from me today?`);
+  }
+
+  setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+function addMessage(role, text) {
+  const msgs = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  if (role === 'agent' && activeAgent) {
+    div.innerHTML = `
+      <img class="msg-avatar" src="data:image/jpeg;base64,${PHOTOS[activeAgent.photo]}" alt="${activeAgent.name}">
+      <div class="msg-bubble">${text}</div>`;
+  } else {
+    div.innerHTML = `
+      <img class="msg-avatar" src="data:image/jpeg;base64,${PHOTOS.gina}" alt="Gina">
+      <div class="msg-bubble">${text}</div>`;
+  }
+
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg agent';
+  div.id = 'typing-indicator';
+  div.innerHTML = `
+    <img class="msg-avatar" src="data:image/jpeg;base64,${PHOTOS[activeAgent.photo]}" alt="">
+    <div class="typing-indicator">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+async function sendMessage() {
+  if (!activeAgent) { showToast('Select an agent first.'); return; }
+  if (!apiKey) { openModal(); return; }
+
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  addMessage('user', text);
+
+  // Save user message to memory
+  dmMemoryAppend(activeAgent.id, 'user', text);
+  chatHistory.push({ role: 'user', content: text });
+
+  document.getElementById('sendBtn').disabled = true;
+  showTyping();
+
+  // Build system prompt with agent's own memory context
+  const memCtx = dmMemoryContext(activeAgent.id);
+  const systemWithMemory = activeAgent.systemPrompt + memCtx +
+    `
+
+Current date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}.` +
+    `
+IMPORTANT: You have full memory of all past conversations with Gina shown above. Reference them naturally when relevant. Never say you don't remember previous conversations.`;
+
+  try {
+    const response = await fetch('/.netlify/functions/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        system: systemWithMemory,
+        messages: chatHistory
+      })
+    });
+
+    if (!response.ok) { const e = await response.text(); throw new Error(`${response.status}: ${e.slice(0,120)}`); }
+    const data = await response.json();
+    if (!data.content || !data.content[0]) throw new Error('Empty response');
+    const reply = data.content[0].text;
+
+    // Save agent reply to memory
+    dmMemoryAppend(activeAgent.id, 'assistant', reply);
+    chatHistory.push({ role: 'assistant', content: reply });
+
+    removeTyping();
+    addMessage('agent', reply);
+  } catch(err) {
+    removeTyping();
+    addMessage('agent', `Error: ${err.message}`);
+  }
+
+  document.getElementById('sendBtn').disabled = false;
 }
 
 // ============================================================
