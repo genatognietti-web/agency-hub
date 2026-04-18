@@ -1398,9 +1398,41 @@ let chatHistory = [];
 let tasks = JSON.parse(localStorage.getItem('twg_tasks') || 'null') || getDefaultTasks();
 
 // ============================================================
+// SEED PRIOR MEMORY — one-time load of known prior work
+// ============================================================
+function seedPriorMemory() {
+  const seedKey = 'twg_memory_seeded_v1';
+  if (localStorage.getItem(seedKey)) return; // already seeded
+
+  const priorWork = {
+    julian: {
+      date: 'Friday, April 17, 2026',
+      summary: 'Completed initial pricing strategy for all three bundles. Established entry-level Coach HR Starter Bundle at low-friction price point, core Parent/Athlete Conduct Bundle as authority anchor, and Compliance & Incident Master System as premium tier. Drafted tiered pricing rationale with ROI framing for each product.'
+    },
+    ellara: {
+      date: 'Friday, April 17, 2026',
+      summary: 'Agency Hub v1 built and deployed to Netlify (de94.netlify.app). iMessage-style standup group chat operational with all 7 agents. Tracker tab integrated into single-file hub. API key modal with show/hide and live validation working. Auto-standup fires on load.'
+    },
+    cassian: {
+      date: 'Friday, April 17, 2026',
+      summary: 'Agency Hub deployed and functional on Netlify via GitHub integration. Single-file architecture confirmed stable. Netlify function proxy wired for all API calls. Identified and resolved blank page bug caused by Content Security Policy blocking Google Fonts.'
+    }
+  };
+
+  Object.entries(priorWork).forEach(([agentId, entry]) => {
+    saveAgentMemory(agentId, entry);
+  });
+
+  localStorage.setItem(seedKey, '1');
+}
+
+// ============================================================
 // INIT
 // ============================================================
 function init() {
+  // Seed prior work into agent memory if not already seeded
+  seedPriorMemory();
+
   // Set photos
   const ellaraAgent = AGENTS.find(a => a.id === 'ellara');
   document.getElementById('ellaraHeaderImg').src = `data:image/png;base64,${PHOTOS.ellara}`;
@@ -1606,6 +1638,54 @@ function gcRemoveTyping(agentId) {
   if (el) el.remove();
 }
 
+// ============================================================
+// AGENT MEMORY SYSTEM — persistent per-agent work log
+// ============================================================
+function getAgentMemory(agentId) {
+  const raw = localStorage.getItem('twg_memory_' + agentId);
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch(e) { return []; }
+}
+
+function saveAgentMemory(agentId, entry) {
+  const existing = getAgentMemory(agentId);
+  existing.push(entry);
+  // Keep last 7 entries (7 days of standups)
+  const trimmed = existing.slice(-7);
+  localStorage.setItem('twg_memory_' + agentId, JSON.stringify(trimmed));
+}
+
+function buildMemoryContext(agentId) {
+  const entries = getAgentMemory(agentId);
+  if (!entries.length) return '';
+  const log = entries.map(e => `[${e.date}] ${e.summary}`).join('\n');
+  return `\n\nYOUR WORK LOG (what you have done on previous days — treat this as your memory):\n${log}\n`;
+}
+
+async function writeAgentMemory(agentId, standupReport) {
+  const agent = AGENTS.find(a => a.id === agentId);
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  try {
+    const response = await fetch('/.netlify/functions/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        system: `You are ${agent.name}, ${agent.role} at The Whole Game LLC. Write a concise 2-3 sentence memory log entry summarizing the work you reported today. Be specific — include decisions made, deliverables produced, and actions taken. No markdown, no headers, plain text only.`,
+        messages: [{ role: 'user', content: `Today is ${today}. Here is what you reported in standup:\n\n"${standupReport}"\n\nWrite your memory log entry.` }]
+      })
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    const summary = data.content[0].text.trim();
+    saveAgentMemory(agentId, { date: today, summary });
+  } catch(e) {
+    // Silent fail — memory write is non-critical
+  }
+}
+
 async function gcFetch(agentId, messages, isMain) {
   const agent = AGENTS.find(a => a.id === agentId);
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -1621,13 +1701,15 @@ FORMATTING RULES — follow exactly:
 - If you are delivering an actual document or detailed content (pricing tiers, copy, a plan, a spec), write it out in full after a short intro — this is the ONE case where longer is fine.
 - Otherwise: 2-4 sentences max.`;
 
+  const memoryContext = buildMemoryContext(agentId);
+
   const systemPrompt = isMain
-    ? agent.systemPrompt + plainLang + `
+    ? agent.systemPrompt + memoryContext + plainLang + `
 
 Today is ${today}, Day ${day} of 90. Run the standup: name the top 3 priorities, assign one clear task to each agent by name, and end with a direct @Gina question that moves something forward today.`
-    : agent.systemPrompt + plainLang + `
+    : agent.systemPrompt + memoryContext + plainLang + `
 
-Today is ${today}, Day ${day} of 90. Give your standup check-in. Lead with your department's single most important action today. If you have a deliverable ready, write it out in full. If you need Gina to decide or act on something, use @Gina.`;
+Today is ${today}, Day ${day} of 90. Give your standup check-in. Reference your prior work where relevant. Lead with your department's single most important action today. If you have a deliverable ready, write it out in full. If you need Gina to decide or act on something, use @Gina.`;
 
     gcAddTyping(agentId);
 
@@ -1741,7 +1823,7 @@ Reply like a text in a group chat. Short, direct, no markdown, no bullets, no he
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 250,
-        system: ellara.systemPrompt + plainLang + ` Today is ${today}, Day ${day}. This is an ongoing group standup chat.`,
+        system: ellara.systemPrompt + buildMemoryContext('ellara') + plainLang + ` Today is ${today}, Day ${day}. This is an ongoing group standup chat.`,
         messages: gcHistory
       })
     });
@@ -1841,6 +1923,16 @@ Example format:
       ? `Tracker updated — ${changed} task${changed > 1 ? 's' : ''} marked complete. Check the Tracker tab.`
       : 'Tracker reviewed — no new completions detected from today\'s standup.';
     gcAddMsg('ellara', msg);
+
+    // Write memory logs for all agents — fire and forget
+    gcAddMsg('ellara', 'Logging today\'s work to agent memory...');
+    const memoryWrites = Object.entries(agentResponses).map(([id, text]) =>
+      writeAgentMemory(id, text)
+    );
+    // Also write Ellara's own memory
+    memoryWrites.push(writeAgentMemory('ellara', ellaraOpener));
+    await Promise.allSettled(memoryWrites);
+    gcAddMsg('ellara', 'Memory updated. All agents will carry today\'s work into tomorrow\'s standup.');
 
   } catch(err) {
     gcAddMsg('ellara', 'Tracker sync error: ' + err.message);
