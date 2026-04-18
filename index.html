@@ -1427,14 +1427,116 @@ function seedPriorMemory() {
 }
 
 // ============================================================
+// MASTER MEMORY — ellara-memory.json (GitHub source of truth)
+// ============================================================
+let masterMemory = null;
+
+async function loadMasterMemory() {
+  try {
+    // Fetch raw JSON from GitHub repo — update this URL to match your repo
+    const MEMORY_URL = 'https://raw.githubusercontent.com/genatognietti-web/agency-hub/main/ellara-memory.json';
+    const res = await fetch(MEMORY_URL + '?t=' + Date.now()); // cache bust
+    if (!res.ok) throw new Error('Memory file not found');
+    masterMemory = await res.json();
+
+    // Sync tasks from master memory into localStorage tracker
+    // Only sync tasks that don't exist locally yet (don't overwrite manual changes)
+    syncMasterTasksToTracker();
+
+    // Show memory loaded indicator
+    const dayText = document.getElementById('dayText');
+    if (dayText) {
+      dayText.title = 'Master memory loaded from GitHub — ' + masterMemory._meta.last_updated;
+    }
+    console.log('[Memory] Master memory loaded:', masterMemory._meta.last_updated);
+  } catch(e) {
+    console.warn('[Memory] Could not load master memory from GitHub. Using localStorage only.', e.message);
+    masterMemory = null;
+  }
+}
+
+function syncMasterTasksToTracker() {
+  if (!masterMemory || !masterMemory.tasks) return;
+  const saved = localStorage.getItem('twg_tasks');
+
+  // If no local tasks yet, use master memory tasks as the source
+  if (!saved) {
+    tasks = {
+      phase1: masterMemory.tasks.phase1 || [],
+      phase2: masterMemory.tasks.phase2 || [],
+      phase3: masterMemory.tasks.phase3 || []
+    };
+    saveTasks();
+    return;
+  }
+
+  // If local tasks exist, merge: add any NEW task IDs from master that don't exist locally
+  const local = JSON.parse(saved);
+  ['phase1', 'phase2', 'phase3'].forEach(phase => {
+    const masterPhaseTasks = masterMemory.tasks[phase] || [];
+    const localIds = new Set((local[phase] || []).map(t => t.id));
+    masterPhaseTasks.forEach(mt => {
+      if (!localIds.has(mt.id)) {
+        local[phase] = local[phase] || [];
+        local[phase].push(mt);
+      }
+    });
+  });
+  tasks = local;
+  saveTasks();
+}
+
+function getMasterMemoryContext() {
+  if (!masterMemory) return '';
+
+  const docs = (masterMemory.documents || [])
+    .map(d => `- ${d.name} (${d.status}) [${d.format}, ${d.version}]`)
+    .join('\n');
+
+  const decisions = (masterMemory.decisions || [])
+    .map(d => `- [${d.date}] ${d.category}: ${d.decision} — Status: ${d.status}`)
+    .join('\n');
+
+  const doneTasks = [
+    ...(masterMemory.tasks.phase1 || []),
+    ...(masterMemory.tasks.phase2 || []),
+    ...(masterMemory.tasks.phase3 || [])
+  ].filter(t => t.done).map(t => `- ${t.text}`).join('\n');
+
+  const openTasks = [
+    ...(masterMemory.tasks.phase1 || []),
+    ...(masterMemory.tasks.phase2 || []),
+    ...(masterMemory.tasks.phase3 || [])
+  ].filter(t => !t.done).map(t => `- ${t.text}${t.notes ? ' [' + t.notes + ']' : ''}`).join('\n');
+
+  return `
+
+MASTER BUSINESS MEMORY (source of truth — as of ${masterMemory._meta.last_updated}):
+
+BUSINESS STATUS:
+${masterMemory.instructions_for_ellara}
+
+DOCUMENTS BUILT:
+${docs || 'None yet'}
+
+KEY DECISIONS MADE:
+${decisions || 'None yet'}
+
+COMPLETED TASKS:
+${doneTasks || 'None yet'}
+
+OPEN TASKS:
+${openTasks || 'None'}`;
+}
+
+// ============================================================
 // INIT
 // ============================================================
-function init() {
+async function init() {
   // Seed prior work into agent memory if not already seeded
   seedPriorMemory();
 
   // Set photos
-  const ellaraAgent = AGENTS.find(a => a.id === 'ellara');
   document.getElementById('ellaraHeaderImg').src = `data:image/png;base64,${PHOTOS.ellara}`;
   document.getElementById('ginaHeaderImg').src = `data:image/jpeg;base64,${PHOTOS.gina}`;
 
@@ -1447,6 +1549,15 @@ function init() {
   // Build task list
   buildTaskList();
   updateStats();
+
+  // Load master memory from GitHub (non-blocking — hub works without it)
+  loadMasterMemory().then(() => {
+    if (masterMemory) {
+      // Rebuild task list with any new tasks synced from master
+      buildTaskList();
+      updateStats();
+    }
+  });
 }
 
 function updateDayCounter() {
@@ -1702,12 +1813,13 @@ FORMATTING RULES — follow exactly:
 - Otherwise: 2-4 sentences max.`;
 
   const memoryContext = buildMemoryContext(agentId);
+  const masterContext = agentId === 'ellara' ? getMasterMemoryContext() : '';
 
   const systemPrompt = isMain
-    ? agent.systemPrompt + memoryContext + plainLang + `
+    ? agent.systemPrompt + masterContext + memoryContext + plainLang + `
 
 Today is ${today}, Day ${day} of 90. Run the standup: name the top 3 priorities, assign one clear task to each agent by name, and end with a direct @Gina question that moves something forward today.`
-    : agent.systemPrompt + memoryContext + plainLang + `
+    : agent.systemPrompt + masterContext + memoryContext + plainLang + `
 
 Today is ${today}, Day ${day} of 90. Give your standup check-in. Reference your prior work where relevant. Lead with your department's single most important action today. If you have a deliverable ready, write it out in full. If you need Gina to decide or act on something, use @Gina.`;
 
@@ -1823,7 +1935,7 @@ Reply like a text in a group chat. Short, direct, no markdown, no bullets, no he
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 250,
-        system: ellara.systemPrompt + buildMemoryContext('ellara') + plainLang + ` Today is ${today}, Day ${day}. This is an ongoing group standup chat.`,
+        system: ellara.systemPrompt + getMasterMemoryContext() + buildMemoryContext('ellara') + plainLang + ` Today is ${today}, Day ${day}. This is an ongoing group standup chat.`,
         messages: gcHistory
       })
     });
