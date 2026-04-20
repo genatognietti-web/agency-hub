@@ -1395,7 +1395,8 @@ Think Atomic Habits — build systems that reduce friction to near zero.`,
 let apiKey = localStorage.getItem('twg_api_key') || '';
 let activeAgent = null;
 let chatHistory = [];
-let tasks = JSON.parse(localStorage.getItem('twg_tasks') || 'null') || getDefaultTasks();
+const TASK_VERSION = 'twg_tasks_v2';
+let tasks = migrateTasksToVersion();
 
 // ============================================================
 // SEED PRIOR MEMORY — one-time load of known prior work
@@ -2054,31 +2055,164 @@ Example format:
 // ============================================================
 // TRACKER
 // ============================================================
+function migrateTasksToVersion() {
+  const currentVersion = localStorage.getItem('twg_task_version');
+  
+  if (currentVersion === TASK_VERSION) {
+    const saved = localStorage.getItem('twg_tasks');
+    if (saved) {
+      try { return JSON.parse(saved); } catch(e) { }
+    }
+  }
+
+  const manuallyChecked = new Set();
+  
+  const oldRaw = localStorage.getItem('twg_tasks');
+  if (oldRaw) {
+    try {
+      const oldTasks = JSON.parse(oldRaw);
+      ['phase1','phase2','phase3'].forEach(phase => {
+        (oldTasks[phase] || []).forEach(t => {
+          if (t.done) manuallyChecked.add(t.id);
+          if (t.done && t.text) manuallyChecked.add('text:' + t.text.toLowerCase().trim());
+        });
+      });
+    } catch(e) { }
+  }
+
+  const fresh = getDefaultTasks();
+
+  ['phase1','phase2','phase3'].forEach(phase => {
+    fresh[phase].forEach(task => {
+      if (manuallyChecked.has(task.id)) task.done = true;
+      if (manuallyChecked.has('text:' + task.text.toLowerCase().trim())) task.done = true;
+    });
+  });
+
+  localStorage.setItem('twg_tasks', JSON.stringify(fresh));
+  localStorage.setItem('twg_task_version', TASK_VERSION);
+  
+  return fresh;
+}
 function getDefaultTasks() {
   return {
+
     phase1: [
-      { id: 't1', text: 'Finalize brand name & tagline', tag: 'Brand', done: false },
-      { id: 't2', text: 'Set pricing for all three bundles', tag: 'Revenue', done: false },
-      { id: 't3', text: 'Create Google Drive delivery folders', tag: 'Ops', done: false },
-      { id: 't4', text: 'Post first content piece (build in public)', tag: 'Content', done: false },
-      { id: 't5', text: 'Set up Stripe account', tag: 'Revenue', done: false },
-      { id: 't6', text: 'Write landing page copy (Damon)', tag: 'Brand', done: false },
-      { id: 't7', text: 'Complete Ellara system prompt refinement', tag: 'Ops', done: true },
+      { id: 'p1_l1', text: 'Apply for LLC formation (Tennessee)', tag: 'Legal', done: false },
+      { id: 'p1_l2', text: 'Obtain EIN from IRS (free, online, 10 min)', tag: 'Legal', done: false },
+      { id: 'p1_l3', text: 'Open dedicated business checking account', tag: 'Legal', done: false },
+      { id: 'p1_l4', text: 'Draft Terms of Use for website', tag: 'Legal', done: false },
+      { id: 'p1_l5', text: 'Draft Privacy Policy for website', tag: 'Legal', done: false },
+      { id: 'p1_l6', text: 'Draft product disclaimer language (Mira)', tag: 'Legal', done: true },
+      { id: 'p1_l7', text: 'Confirm business address / registered agent', tag: 'Legal', done: false },
+      { id: 'p1_b1', text: 'Finalize brand name: The Whole Game', tag: 'Brand', done: true },
+      { id: 'p1_b2', text: 'Finalize tagline: "We handle everything off the field"', tag: 'Brand', done: true },
+      { id: 'p1_b3', text: 'Define brand voice and tone (Damon)', tag: 'Brand', done: true },
+      { id: 'p1_b4', text: 'Create brand color palette and font decisions', tag: 'Brand', done: false },
+      { id: 'p1_b5', text: 'Design or source logo', tag: 'Brand', done: false },
+      { id: 'p1_b6', text: 'Create branded templates (headers, cover pages) for bundles', tag: 'Brand', done: false },
+      { id: 'p1_b7', text: 'Build Gina\'s personal brand presence (linked to TWG)', tag: 'Brand', done: false },
+      { id: 'p1_p1', text: 'Build Bundle 1: Coach HR Starter Bundle', tag: 'Product', done: true },
+      { id: 'p1_p2', text: 'Build Bundle 2: Parent & Athlete Conduct Bundle', tag: 'Product', done: true },
+      { id: 'p1_p3', text: 'Build Bundle 3: Compliance & Incident Master System', tag: 'Product', done: true },
+      { id: 'p1_p4', text: 'Write branded product descriptions for all 3 bundles (Damon)', tag: 'Product', done: true },
+      { id: 'p1_p5', text: 'Apply brand formatting/cover pages to all bundle documents', tag: 'Product', done: false },
+      { id: 'p1_p6', text: 'Create "START HERE" implementation guide for each bundle', tag: 'Product', done: false },
+      { id: 'p1_p7', text: 'Peer review all 3 bundles for quality and completeness (Elijah)', tag: 'Product', done: false },
+      { id: 'p1_p8', text: 'Final Mira compliance pass on all bundle content', tag: 'Product', done: false },
+      { id: 'p1_p9', text: 'Create full-stack bundle (all 3) as 4th SKU at $297', tag: 'Product', done: true },
+      { id: 'p1_r1', text: 'Set pricing: $97 / $122 / $147 / $297', tag: 'Revenue', done: true },
+      { id: 'p1_r2', text: 'Set up Stripe account', tag: 'Revenue', done: true },
+      { id: 'p1_r3', text: 'Create 4 Stripe products/payment links (one per bundle)', tag: 'Revenue', done: false },
+      { id: 'p1_r4', text: 'Configure Stripe post-purchase redirect with OneDrive links', tag: 'Revenue', done: false },
+      { id: 'p1_r5', text: 'Set up Stripe automated receipt email', tag: 'Revenue', done: false },
+      { id: 'p1_r6', text: 'Write and configure welcome email template (Cassian trigger)', tag: 'Revenue', done: true },
+      { id: 'p1_d1', text: 'Set up OneDrive delivery folder structure (3 bundles + full stack)', tag: 'Ops', done: false },
+      { id: 'p1_d2', text: 'Upload all finalized bundle documents to OneDrive', tag: 'Ops', done: false },
+      { id: 'p1_d3', text: 'Create shareable view-only OneDrive links for each bundle', tag: 'Ops', done: false },
+      { id: 'p1_d4', text: 'Test full purchase-to-delivery flow end to end', tag: 'Ops', done: false },
+      { id: 'p1_d5', text: 'Set up Google Drive agent folders (Agency Hub integration)', tag: 'Ops', done: true },
+      { id: 'p1_w1', text: 'Choose and set up website platform (Webflow / Squarespace / Shopify)', tag: 'Tech', done: false },
+      { id: 'p1_w2', text: 'Write homepage copy (Damon)', tag: 'Brand', done: false },
+      { id: 'p1_w3', text: 'Write 3 individual product pages with descriptions, disclaimers, buy buttons', tag: 'Brand', done: false },
+      { id: 'p1_w4', text: 'Write About page (Gina\'s story + TWG mission)', tag: 'Brand', done: false },
+      { id: 'p1_w5', text: 'Connect Stripe payment links to product pages', tag: 'Tech', done: false },
+      { id: 'p1_w6', text: 'Add legal disclaimer to every product and checkout page (Mira)', tag: 'Legal', done: false },
+      { id: 'p1_w7', text: 'Publish website (Friday April 25 target)', tag: 'Tech', done: false },
+      { id: 'p1_c1', text: 'Set up social accounts: TikTok, Instagram, LinkedIn', tag: 'Content', done: false },
+      { id: 'p1_c2', text: 'Create consistent profile branding across all platforms', tag: 'Content', done: false },
+      { id: 'p1_c3', text: 'Post first "build in public" content piece — Day 1 origin story', tag: 'Content', done: false },
+      { id: 'p1_c4', text: 'Post 3x per week minimum through Phase 1', tag: 'Content', done: false },
+      { id: 'p1_c5', text: 'Content strategy: Lane 1 (TWG client) and Lane 2 (build in public) defined (Damon)', tag: 'Content', done: true },
+      { id: 'p1_c6', text: 'Draft 7-day content calendar for launch week', tag: 'Content', done: false },
+      { id: 'p1_a1', text: 'Agency Hub v1 built and deployed to Netlify', tag: 'System', done: true },
+      { id: 'p1_a2', text: 'All 7 agent system prompts finalized', tag: 'System', done: true },
+      { id: 'p1_a3', text: 'Standup group chat operational', tag: 'System', done: true },
+      { id: 'p1_a4', text: 'Tracker integrated into hub (single file)', tag: 'System', done: true },
+      { id: 'p1_a5', text: 'Agent inline DM chat functional (all 7 agents)', tag: 'System', done: false },
+      { id: 'p1_a6', text: 'Damon Content Review tool deployed alongside hub', tag: 'System', done: true },
+      { id: 'p1_a7', text: 'Master memory JSON (ellara-memory.json) on GitHub', tag: 'System', done: false },
+      { id: 'p1_a8', text: 'Cloudflare Worker 9am daily briefing text (complete code paste)', tag: 'System', done: false },
     ],
+
     phase2: [
-      { id: 't8', text: 'Launch sales page', tag: 'Revenue', done: false },
-      { id: 't9', text: 'Get first paying customer', tag: 'Revenue', done: false },
-      { id: 't10', text: 'Reach 100 social followers', tag: 'Content', done: false },
-      { id: 't11', text: 'Start email list', tag: 'Revenue', done: false },
+      { id: 'p2_g1', text: 'Soft launch announcement post (Damon — high-energy hook)', tag: 'Brand', done: false },
+      { id: 'p2_g2', text: 'Announce to personal network (DMs, text, LinkedIn)', tag: 'Revenue', done: false },
+      { id: 'p2_g3', text: 'Submit to 3 youth sports Facebook groups or forums', tag: 'Revenue', done: false },
+      { id: 'p2_g4', text: 'Identify 10 warm leads (people you know in youth sports)', tag: 'Revenue', done: false },
+      { id: 'p2_g5', text: 'Send personalized outreach to 10 warm leads', tag: 'Revenue', done: false },
+      { id: 'p2_r1', text: 'Close first paying customer', tag: 'Revenue', done: false },
+      { id: 'p2_r2', text: 'Deliver first order and collect feedback', tag: 'Revenue', done: false },
+      { id: 'p2_r3', text: 'Get first testimonial or review', tag: 'Revenue', done: false },
+      { id: 'p2_r4', text: 'Hit $100 in revenue', tag: 'Revenue', done: false },
+      { id: 'p2_r5', text: 'Hit $500 in revenue', tag: 'Revenue', done: false },
+      { id: 'p2_a1', text: 'Reach 100 combined social followers', tag: 'Content', done: false },
+      { id: 'p2_a2', text: 'Start email list (ConvertKit / Mailchimp / Beehiiv)', tag: 'Revenue', done: false },
+      { id: 'p2_a3', text: 'Build simple lead magnet (free 1-pager or checklist)', tag: 'Content', done: false },
+      { id: 'p2_a4', text: 'Post a content piece that gets 1,000+ views', tag: 'Content', done: false },
+      { id: 'p2_a5', text: 'Maintain 5x/week posting cadence across Phase 2', tag: 'Content', done: false },
+      { id: 'p2_a6', text: 'Launch "Day in the AI system" behind-the-scenes series (Damon)', tag: 'Content', done: false },
+      { id: 'p2_p1', text: 'Review all bundle documents based on real customer feedback', tag: 'Product', done: false },
+      { id: 'p2_p2', text: 'Identify most-asked question from buyers — turn it into content', tag: 'Product', done: false },
+      { id: 'p2_p3', text: 'Evaluate need for a 4th standalone product or upsell', tag: 'Product', done: false },
+      { id: 'p2_p4', text: 'Research subscription or recurring revenue model feasibility (Julian)', tag: 'Revenue', done: false },
+      { id: 'p2_o1', text: 'Build simple FAQ page on website', tag: 'Ops', done: false },
+      { id: 'p2_o2', text: 'Create customer support email/inbox and response template', tag: 'Ops', done: false },
+      { id: 'p2_o3', text: 'Set up basic bookkeeping (Wave / QuickBooks Simple)', tag: 'Revenue', done: false },
+      { id: 'p2_o4', text: 'Document refund and dispute policy', tag: 'Legal', done: false },
+      { id: 'p2_o5', text: 'Track all revenue and expenses from Day 1 (Julian)', tag: 'Revenue', done: false },
+      { id: 'p2_s1', text: 'Run standup 5x/week and log completions in tracker', tag: 'System', done: false },
+      { id: 'p2_s2', text: 'Complete agent inline DM chat if not done in Phase 1', tag: 'System', done: false },
+      { id: 'p2_s3', text: 'Update master memory JSON weekly (Cassian)', tag: 'System', done: false },
+      { id: 'p2_s4', text: 'Set up basic analytics on website (Google Analytics or Plausible)', tag: 'Tech', done: false },
+      { id: 'p2_s5', text: 'Complete Cloudflare 9am briefing setup if not done in Phase 1', tag: 'System', done: false },
     ],
+
     phase3: [
-      { id: 't12', text: '10+ customers', tag: 'Revenue', done: false },
-      { id: 't13', text: '$1,000+ revenue', tag: 'Revenue', done: false },
-      { id: 't14', text: 'Referral system active', tag: 'Ops', done: false },
+      { id: 'p3_r1', text: 'Hit $1,000 in total revenue', tag: 'Revenue', done: false },
+      { id: 'p3_r2', text: 'Reach 10 total paying customers', tag: 'Revenue', done: false },
+      { id: 'p3_r3', text: 'Close first full-stack ($297) bundle sale', tag: 'Revenue', done: false },
+      { id: 'p3_r4', text: 'Evaluate and launch first upsell or bundle expansion offer', tag: 'Revenue', done: false },
+      { id: 'p3_r5', text: 'Define path to $2,500/mo recurring revenue (Julian)', tag: 'Revenue', done: false },
+      { id: 'p3_a1', text: 'Reach 500 social followers', tag: 'Content', done: false },
+      { id: 'p3_a2', text: 'Reach 100 email subscribers', tag: 'Content', done: false },
+      { id: 'p3_a3', text: 'Collect 5 documented customer testimonials', tag: 'Brand', done: false },
+      { id: 'p3_a4', text: 'Get 1 organic referral or word-of-mouth customer', tag: 'Revenue', done: false },
+      { id: 'p3_a5', text: 'Post 90-day documentary recap episode (Damon)', tag: 'Content', done: false },
+      { id: 'p3_p1', text: 'Launch one new product or template based on demand signals', tag: 'Product', done: false },
+      { id: 'p3_p2', text: 'Evaluate subscription model and set go/no-go decision (Julian)', tag: 'Revenue', done: false },
+      { id: 'p3_p3', text: 'Publish v1.1 updates to bundles based on Phase 2 feedback', tag: 'Product', done: false },
+      { id: 'p3_p4', text: 'Identify highest-converting product — double down on it', tag: 'Revenue', done: false },
+      { id: 'p3_s1', text: 'Document all operational SOPs (Stefan)', tag: 'Ops', done: false },
+      { id: 'p3_s2', text: 'Automate post-purchase delivery end to end (no manual steps)', tag: 'Tech', done: false },
+      { id: 'p3_s3', text: 'Build referral or affiliate program concept (Damon + Julian)', tag: 'Revenue', done: false },
+      { id: 'p3_s4', text: 'Prepare Phase 4 roadmap: what does the next 90 days look like?', tag: 'Ops', done: false },
+      { id: 'p3_s5', text: 'Agency Hub v2 planning: what features does the system need next? (Cassian)', tag: 'System', done: false },
+      { id: 'p3_m1', text: '90-Day Launch complete — full retrospective written', tag: 'Ops', done: false },
+      { id: 'p3_m2', text: 'LLC officially active and operating', tag: 'Legal', done: false },
+      { id: 'p3_m3', text: 'First month of revenue tracked and reported (Julian)', tag: 'Revenue', done: false },
     ]
   };
-}
-
 function buildTaskList() {
   const container = document.getElementById('taskLists');
   container.innerHTML = '';
@@ -2141,6 +2275,7 @@ function addTask(phase) {
 
 function saveTasks() {
   localStorage.setItem('twg_tasks', JSON.stringify(tasks));
+  localStorage.setItem('twg_task_version', TASK_VERSION);
 }
 
 function updateStats() {
