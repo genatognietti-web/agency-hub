@@ -1922,11 +1922,15 @@ async function sendGcReply() {
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const start = new Date('2026-04-11');
-  const day = Math.max(1, Math.floor((new Date() - start) / (1000 * 60 * 60 * 24)) + 1);
+  const day = Math.max(1, Math.floor((new Date() - start) / (1000*60*60*24)) + 1);
 
   const ellara = AGENTS.find(a => a.id === 'ellara');
   const plainLang = `
-Reply like a text in a group chat. Short, direct, no markdown, no bullets, no headers. If you need Gina to act or decide, start with @Gina.`;
+Reply like a text in a group chat. Short, direct, no markdown, no bullets, no headers. If you need Gina to act or decide, start with @Gina.
+
+TASK DETECTION: If Gina's message indicates a task has been completed (e.g. "I just set up the OneDrive folders", "website is live", "Stripe links are done"), you MUST end your reply with a JSON block on its own line in this exact format:
+TASK_UPDATE:{"taskId":"p1_d1","done":true}
+Only include this if you are confident a specific task from the tracker was completed. Use the exact task ID. One task per message. If multiple tasks were completed, pick the most specific one.`;
 
   try {
     gcAddTyping('ellara');
@@ -1935,7 +1939,7 @@ Reply like a text in a group chat. Short, direct, no markdown, no bullets, no he
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 250,
+        max_tokens: 300,
         system: ellara.systemPrompt + getMasterMemoryContext() + buildMemoryContext('ellara') + plainLang + ` Today is ${today}, Day ${day}. This is an ongoing group standup chat.`,
         messages: gcHistory
       })
@@ -1943,7 +1947,35 @@ Reply like a text in a group chat. Short, direct, no markdown, no bullets, no he
 
     if (!response.ok) throw new Error('API error ' + response.status);
     const data = await response.json();
-    const reply = data.content[0].text.trim();
+    let reply = data.content[0].text.trim();
+
+    const taskUpdateMatch = reply.match(/TASK_UPDATE:(\{[^}]+\})/);
+    if (taskUpdateMatch) {
+      try {
+        const update = JSON.parse(taskUpdateMatch[1]);
+        reply = reply.replace(/\nTASK_UPDATE:\{[^}]+\}/, '').trim();
+
+        let updated = false;
+        ['phase1','phase2','phase3'].forEach(phase => {
+          const task = tasks[phase].find(t => t.id === update.taskId);
+          if (task && task.done !== update.done) {
+            task.done = update.done;
+            updated = true;
+          }
+        });
+
+        if (updated) {
+          saveTasks();
+          buildTaskList();
+          updateStats();
+          await commitMemoryToGitHub({ [update.taskId]: update.done }, null, null);
+          reply += '\n\n✓ Tracker updated.';
+        }
+      } catch(e) {
+        // Silent fail on parse error
+      }
+    }
+
     gcRemoveTyping('ellara');
     gcAddMsg('ellara', reply);
     gcHistory.push({ role: 'assistant', content: reply });
@@ -1958,10 +1990,48 @@ Reply like a text in a group chat. Short, direct, no markdown, no bullets, no he
 // ============================================================
 // ELLARA TRACKER SYNC — fires after standup, auto-updates tasks
 // ============================================================
-async function ellaraTrackerSync(ellaraOpener, agentResponses) {
+async function commitMemoryToGitHub(taskUpdates, newDecision, businessUpdate) {
+  const today = new Date().toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric'
+  });
+
+  const payload = {
+    lastUpdated: today
+  };
+
+  if (taskUpdates && Object.keys(taskUpdates).length > 0) {
+    payload.taskUpdates = taskUpdates;
+  }
+  if (newDecision) {
+    payload.newDecision = newDecision;
+  }
+  if (businessUpdate && Object.keys(businessUpdate).length > 0) {
+    payload.businessUpdate = businessUpdate;
+  }
+
+  try {
+    const res = await fetch('/.netlify/functions/update-memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      console.warn('[Memory] GitHub commit failed:', err.error);
+      return false;
+    }
+
+    console.log('[Memory] GitHub commit successful');
+    return true;
+  } catch(e) {
+    console.warn('[Memory] GitHub commit error:', e.message);
+    return false;
+  }
+}
+  async function ellaraTrackerSync(ellaraOpener, agentResponses) {
   const ellara = AGENTS.find(a => a.id === 'ellara');
 
-  // Build task manifest for Ellara to evaluate
   const allTasks = [
     ...tasks.phase1.map(t => ({ ...t, phase: 'phase1' })),
     ...tasks.phase2.map(t => ({ ...t, phase: 'phase2' })),
@@ -1997,7 +2067,6 @@ INSTRUCTIONS:
 Example format:
 {"t1":false,"t2":true,"t3":false}`;
 
-  // Show a subtle "Ellara is updating tracker..." message in standup
   gcAddMsg('ellara', 'Reviewing standup against the tracker now...');
 
   try {
@@ -2017,12 +2086,13 @@ Example format:
     const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
     const updates = JSON.parse(raw);
 
-    // Apply updates to all phases
     let changed = 0;
+    const githubUpdates = {};
     ['phase1', 'phase2', 'phase3'].forEach(phase => {
       tasks[phase].forEach(task => {
         if (updates.hasOwnProperty(task.id) && updates[task.id] !== task.done) {
           task.done = updates[task.id];
+          githubUpdates[task.id] = updates[task.id];
           changed++;
         }
       });
@@ -2037,15 +2107,23 @@ Example format:
       : 'Tracker reviewed — no new completions detected from today\'s standup.';
     gcAddMsg('ellara', msg);
 
-    // Write memory logs for all agents — fire and forget
     gcAddMsg('ellara', 'Logging today\'s work to agent memory...');
     const memoryWrites = Object.entries(agentResponses).map(([id, text]) =>
       writeAgentMemory(id, text)
     );
-    // Also write Ellara's own memory
     memoryWrites.push(writeAgentMemory('ellara', ellaraOpener));
     await Promise.allSettled(memoryWrites);
     gcAddMsg('ellara', 'Memory updated. All agents will carry today\'s work into tomorrow\'s standup.');
+
+    if (Object.keys(githubUpdates).length > 0) {
+      gcAddMsg('ellara', 'Syncing completed tasks to master memory on GitHub...');
+      const committed = await commitMemoryToGitHub(githubUpdates, null, null);
+      if (committed) {
+        gcAddMsg('ellara', 'Master memory updated on GitHub. ✓');
+      } else {
+        gcAddMsg('ellara', 'GitHub sync skipped — check GITHUB_TOKEN in Netlify environment variables.');
+      }
+    }
 
   } catch(err) {
     gcAddMsg('ellara', 'Tracker sync error: ' + err.message);
