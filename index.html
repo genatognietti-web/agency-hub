@@ -2239,7 +2239,7 @@ Example format:
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 400,
+        max_tokens: 2000,
         system: ellara.systemPrompt + ' You are performing a tracker sync. Return ONLY raw JSON — no markdown, no explanation.',
         messages: [{ role: 'user', content: syncPrompt }]
       })
