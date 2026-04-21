@@ -1957,7 +1957,151 @@ async function detectAndUpdateTask(userMessage, ellaraReply) {
     // Silent fail
   }
 }
-  async function sendGcReply() {
+  // ============================================================
+// INLINE AGENT CHAT
+// ============================================================
+function selectAgent(agentId) {
+  const agent = AGENTS.find(a => a.id === agentId);
+  if (!agent) return;
+
+  activeAgent = agent;
+  chatHistory = [];
+
+  document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active-chat'));
+  const card = document.getElementById('card-' + agentId);
+  if (card) card.classList.add('active-chat');
+
+  const wrap = document.getElementById('inlineChatWrap');
+  if (wrap) wrap.style.display = 'block';
+
+  const header = document.getElementById('inlineChatHeader');
+  if (header) {
+    header.innerHTML = `
+      <img src="data:image/jpeg;base64,${PHOTOS[agent.photo]}" alt="${agent.name}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+      <div>
+        <div class="chat-header-name">${agent.name}</div>
+        <div class="chat-header-role">${agent.role}</div>
+      </div>`;
+  }
+
+  const msgs = document.getElementById('chatMessages');
+  if (msgs) msgs.innerHTML = '';
+
+  sendGreeting(agent);
+}
+
+async function sendGreeting(agent) {
+  if (!apiKey) return;
+  const msgs = document.getElementById('chatMessages');
+
+  const typing = document.createElement('div');
+  typing.className = 'msg agent';
+  typing.id = 'typing-greeting';
+  typing.innerHTML = `
+    <img class="msg-avatar" src="data:image/jpeg;base64,${PHOTOS[agent.photo]}" alt="${agent.name}">
+    <div class="typing-indicator">
+      <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+    </div>`;
+  msgs.appendChild(typing);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const start = new Date('2026-04-11');
+  const day = Math.max(1, Math.floor((new Date() - start) / (1000*60*60*24)) + 1);
+
+  try {
+    const response = await fetch('/.netlify/functions/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        system: agent.systemPrompt + buildMemoryContext(agent.id) + ` Today is ${today}, Day ${day}. Gina just opened a direct chat with you. Give a short 1-2 sentence greeting. No markdown, no bullets.`,
+        messages: [{ role: 'user', content: 'Hey' }]
+      })
+    });
+    const data = await response.json();
+    const text = data.content[0].text.trim();
+    chatHistory.push({ role: 'user', content: 'Hey' });
+    chatHistory.push({ role: 'assistant', content: text });
+    document.getElementById('typing-greeting')?.remove();
+    addMessage('agent', text, agent);
+  } catch(e) {
+    document.getElementById('typing-greeting')?.remove();
+  }
+}
+
+function addMessage(role, text, agent) {
+  const msgs = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  const photoSrc = role === 'user'
+    ? `data:image/jpeg;base64,${PHOTOS.gina}`
+    : `data:image/jpeg;base64,${PHOTOS[agent.photo]}`;
+  div.innerHTML = `
+    <img class="msg-avatar" src="${photoSrc}" alt="">
+    <div class="msg-bubble">${text}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function sendMessage() {
+  if (!activeAgent) return;
+  if (!apiKey) { openModal(); return; }
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('sendBtn');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  btn.disabled = true;
+  addMessage('user', text, activeAgent);
+  chatHistory.push({ role: 'user', content: text });
+
+  const msgs = document.getElementById('chatMessages');
+  const typing = document.createElement('div');
+  typing.className = 'msg agent';
+  typing.id = 'typing-dm';
+  typing.innerHTML = `
+    <img class="msg-avatar" src="data:image/jpeg;base64,${PHOTOS[activeAgent.photo]}" alt="">
+    <div class="typing-indicator">
+      <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+    </div>`;
+  msgs.appendChild(typing);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const start = new Date('2026-04-11');
+  const day = Math.max(1, Math.floor((new Date() - start) / (1000*60*60*24)) + 1);
+
+  try {
+    const response = await fetch('/.netlify/functions/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        system: activeAgent.systemPrompt + getMasterMemoryContext() + buildMemoryContext(activeAgent.id) + ` Today is ${today}, Day ${day}. Respond naturally to Gina. No markdown, no bullets unless delivering a full document.`,
+        messages: chatHistory
+      })
+    });
+    const data = await response.json();
+    const reply = data.content[0].text.trim();
+    chatHistory.push({ role: 'assistant', content: reply });
+    document.getElementById('typing-dm')?.remove();
+    addMessage('agent', reply, activeAgent);
+  } catch(e) {
+    document.getElementById('typing-dm')?.remove();
+    addMessage('agent', 'Error: ' + e.message, activeAgent);
+  }
+
+  btn.disabled = false;
+}
+
+// ============================================================
+// FIXED sendGcReply
+// ============================================================
+async function sendGcReply() {
   if (!apiKey) { openModal(); return; }
   const input = document.getElementById('gcInput');
   const btn = document.getElementById('gcSendBtn');
@@ -1974,12 +2118,7 @@ async function detectAndUpdateTask(userMessage, ellaraReply) {
   const day = Math.max(1, Math.floor((new Date() - start) / (1000*60*60*24)) + 1);
 
   const ellara = AGENTS.find(a => a.id === 'ellara');
-  const plainLang = `
-Reply like a text in a group chat. Short, direct, no markdown, no bullets, no headers. If you need Gina to act or decide, start with @Gina.
-
-TASK DETECTION: If Gina's message indicates a task has been completed (e.g. "I just set up the OneDrive folders", "website is live", "Stripe links are done"), you MUST end your reply with a JSON block on its own line in this exact format:
-TASK_UPDATE:{"taskId":"p1_d1","done":true}
-Only include this if you are confident a specific task from the tracker was completed. Use the exact task ID. One task per message. If multiple tasks were completed, pick the most specific one.`;
+  const plainLang = `Reply like a text in a group chat. Short, direct, no markdown, no bullets, no headers. If you need Gina to act or decide, start with @Gina.`;
 
   try {
     gcAddTyping('ellara');
@@ -1996,16 +2135,15 @@ Only include this if you are confident a specific task from the tracker was comp
 
     if (!response.ok) throw new Error('API error ' + response.status);
     const data = await response.json();
-    let reply = data.content[0].text.trim();
-
-    const taskUpdateMatch = reply.match(/TASK_UPDATE:(\{[^}]+\})/);
-    if (taskUpdateMatch) {
-      // Detect task completion via separate focused API call
-await detectAndUpdateTask(text, reply);
+    const reply = data.content[0].text.trim();
 
     gcRemoveTyping('ellara');
     gcAddMsg('ellara', reply);
     gcHistory.push({ role: 'assistant', content: reply });
+
+    // Detect task completion via separate focused API call
+    await detectAndUpdateTask(text, reply);
+
   } catch(err) {
     gcRemoveTyping('ellara');
     gcAddMsg('ellara', 'Error: ' + err.message);
