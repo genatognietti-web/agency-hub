@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Tracker · The Whole Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --charcoal: #141414;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --gold: #c9a84c;
+    --gold-light: #e8c96d;
+    --gold-dim: rgba(201,168,76,0.12);
+    --text: #e8e8e8;
+    --muted: #888;
+    --green: #3d9970;
+    --red: #e87c8d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 48px;
+    border-bottom: 1px solid var(--border);
+    background: var(--charcoal);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--gold);
+  }
+
+  .header-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .deadline-chip {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 6px 16px;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .deadline-chip span { color: var(--gold-light); font-weight: 500; }
+
+  .content { padding: 32px 48px; max-width: 1200px; margin: 0 auto; }
+
+  /* TARGETS STRIP */
+  .targets-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .target-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .target-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  }
+
+  .target-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .target-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 4px;
+  }
+
+  .target-sub {
+    font-size: 0.7rem;
+    color: #555;
+    margin-top: 3px;
+  }
+
+  /* REVENUE PROGRESS */
+  .revenue-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .revenue-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .rev-stat {
+    text-align: center;
+  }
+
+  .rev-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    font-weight: 300;
+    color: var(--gold);
+  }
+
+  .rev-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+  }
+
+  .big-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .big-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+
+  .bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+
+  /* LOG TODAY */
+  .log-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .log-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .log-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    margin-bottom: 14px;
+  }
+
+  .log-date {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .activity-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .activity-label {
+    font-size: 0.78rem;
+    color: var(--text);
+    width: 140px;
+    flex-shrink: 0;
+  }
+
+  .activity-sub {
+    font-size: 0.65rem;
+    color: var(--muted);
+    display: block;
+  }
+
+  .counter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .counter-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .counter-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  .counter-val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: var(--gold);
+    min-width: 28px;
+    text-align: center;
+  }
+
+  .counter-target {
+    font-size: 0.65rem;
+    color: #444;
+  }
+
+  .pace-indicator {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+
+  .pace-on { background: rgba(61,153,112,0.15); color: var(--green); }
+  .pace-off { background: rgba(232,124,141,0.15); color: var(--red); }
+  .pace-na { background: #252525; color: var(--muted); }
+
+  .save-btn {
+    width: 100%;
+    margin-top: 14px;
+    padding: 10px;
+    background: var(--gold);
+    border: none;
+    color: var(--black);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .save-btn:hover { background: var(--gold-light); }
+
+  /* HISTORY */
+  .history-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+
+  .history-table th {
+    text-align: left;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .history-table td {
+    padding: 10px 10px;
+    border-bottom: 1px solid #1f1f1f;
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  .history-table tr:last-child td { border-bottom: none; }
+
+  .dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+
+  .dot-green { background: var(--green); }
+  .dot-red { background: var(--red); }
+  .dot-gold { background: var(--gold); }
+
+  .tag {
+    font-size: 0.62rem;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: #252525;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* NOTES */
+  .notes-input {
+    width: 100%;
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    outline: none;
+    resize: vertical;
+    min-height: 70px;
+    margin-top: 12px;
+    transition: border 0.2s;
+  }
+
+  .notes-input:focus { border-color: var(--gold); }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--card);
+    border: 1px solid var(--gold);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    z-index: 300;
+    display: none;
+    animation: fadeUp 0.3s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .empty-history {
+    text-align: center;
+    padding: 24px;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 768px) {
+    .content { padding: 20px 16px; }
+    .header { padding: 14px 16px; }
+    .targets-strip { grid-template-columns: repeat(2, 1fr); }
+    .revenue-grid { grid-template-columns: repeat(2, 1fr); }
+    .log-section { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="header">
+  <div>
+    <div class="header-title">Activity Tracker</div>
+    <div class="header-sub">The Whole Game · Daily Execution</div>
+  </div>
+  <div class="deadline-chip">
+    April 28 soft launch · <span id="daysLeft">—</span> days · July 10 goal: <span>$10K</span>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- TARGETS -->
+  <div class="targets-strip">
+    <div class="target-card">
+      <div class="target-num">~1</div>
+      <div class="target-label">Sale / Day</div>
+      <div class="target-sub">avg bundle $122</div>
+    </div>
+    <div class="target-card">
+      <div class="target-num">5</div>
+      <div class="target-label">Outreach / Day</div>
+      <div class="target-sub">league directors</div>
+    </div>
+    <div class="target-card">
+      <div class="target-num">2</div>
+      <div class="target-label">Discovery Calls / Wk</div>
+      <div class="target-sub">booked or live</div>
+    </div>
+    <div class="target-card">
+      <div class="target-num">36</div>
+      <div class="target-label">Full Stack Sales</div>
+      <div class="target-sub">to hit $10K at $297</div>
+    </div>
+    <div class="target-card">
+      <div class="target-num" id="daysRemaining">—</div>
+      <div class="target-label">Days to July 10</div>
+      <div class="target-sub">launch deadline</div>
+    </div>
+  </div>
+
+  <!-- REVENUE PROGRESS -->
+  <div class="revenue-section">
+    <div class="section-title">
+      Revenue Progress
+      <span style="font-size:0.75rem; color:var(--muted); font-family:'DM Sans',sans-serif;">
+        Breakeven: $321.62 invested
+      </span>
+    </div>
+    <div class="revenue-grid">
+      <div class="rev-stat">
+        <div class="rev-num" id="totalRevenue">$0</div>
+        <div class="rev-label">Total Revenue</div>
+      </div>
+      <div class="rev-stat">
+        <div class="rev-num" id="totalSales">0</div>
+        <div class="rev-label">Total Sales</div>
+      </div>
+      <div class="rev-stat">
+        <div class="rev-num" id="toBreakeven">$322</div>
+        <div class="rev-label">To Breakeven</div>
+      </div>
+      <div class="rev-stat">
+        <div class="rev-num" id="to10k">$10,000</div>
+        <div class="rev-label">To $10K Goal</div>
+      </div>
+    </div>
+    <div class="big-bar">
+      <div class="big-bar-fill" id="revenueBar" style="width:0%"></div>
+    </div>
+    <div class="bar-labels">
+      <span>$0</span>
+      <span id="breakevenMarker">Breakeven $322</span>
+      <span>$10,000</span>
+    </div>
+  </div>
+
+  <!-- LOG TODAY + LOG SALE -->
+  <div class="log-section">
+
+    <!-- Activity Log -->
+    <div class="log-card">
+      <div class="log-title">Log Today's Activity</div>
+      <div class="log-date" id="todayDate">—</div>
+
+      <div class="activity-row">
+        <div class="activity-label">
+          Outreach Sent
+          <span class="activity-sub">DMs, emails, calls</span>
+        </div>
+        <div class="counter-wrap">
+          <button class="counter-btn" onclick="adjust('outreach', -1)">−</button>
+          <div class="counter-val" id="outreachVal">0</div>
+          <button class="counter-btn" onclick="adjust('outreach', 1)">+</button>
+          <span class="counter-target">/ 5 target</span>
+          <span class="pace-indicator pace-na" id="outreachPace">—</span>
+        </div>
+      </div>
+
+      <div class="activity-row">
+        <div class="activity-label">
+          Discovery Calls
+          <span class="activity-sub">booked or completed</span>
+        </div>
+        <div class="counter-wrap">
+          <button class="counter-btn" onclick="adjust('calls', -1)">−</button>
+          <div class="counter-val" id="callsVal">0</div>
+          <button class="counter-btn" onclick="adjust('calls', 1)">+</button>
+          <span class="counter-target">/ 2 wk target</span>
+          <span class="pace-indicator pace-na" id="callsPace">—</span>
+        </div>
+      </div>
+
+      <div class="activity-row">
+        <div class="activity-label">
+          Follow-Ups
+          <span class="activity-sub">warm leads revisited</span>
+        </div>
+        <div class="counter-wrap">
+          <button class="counter-btn" onclick="adjust('followups', -1)">−</button>
+          <div class="counter-val" id="followupsVal">0</div>
+          <button class="counter-btn" onclick="adjust('followups', 1)">+</button>
+          <span class="counter-target">no target</span>
+        </div>
+      </div>
+
+      <div class="activity-row">
+        <div class="activity-label">
+          Content Posted
+          <span class="activity-sub">any platform</span>
+        </div>
+        <div class="counter-wrap">
+          <button class="counter-btn" onclick="adjust('content', -1)">−</button>
+          <div class="counter-val" id="contentVal">0</div>
+          <button class="counter-btn" onclick="adjust('content', 1)">+</button>
+          <span class="counter-target">/ 1 target</span>
+          <span class="pace-indicator pace-na" id="contentPace">—</span>
+        </div>
+      </div>
+
+      <textarea class="notes-input" id="activityNotes" placeholder="Notes — who you reached out to, what happened, any hot leads..."></textarea>
+      <button class="save-btn" onclick="saveActivity()">Save Today's Activity</button>
+    </div>
+
+    <!-- Sale Log -->
+    <div class="log-card">
+      <div class="log-title">Log a Sale</div>
+      <div class="log-date">Record every purchase the moment it happens.</div>
+
+      <div class="activity-row" style="margin-top:8px;">
+        <div class="activity-label">Bundle sold</div>
+        <select id="bundleSold" style="flex:1; background:var(--charcoal); border:1px solid var(--border); color:var(--text); padding:8px 10px; border-radius:7px; font-family:'DM Sans',sans-serif; font-size:0.8rem; outline:none;">
+          <option value="97">Bundle 1 — Coach HR Starter · $97</option>
+          <option value="122">Bundle 2 — Parent & Athlete · $122</option>
+          <option value="147">Bundle 3 — Compliance Master · $147</option>
+          <option value="297">Full Stack (All 3) · $297</option>
+        </select>
+      </div>
+
+      <div class="activity-row">
+        <div class="activity-label">Customer type</div>
+        <select id="customerType" style="flex:1; background:var(--charcoal); border:1px solid var(--border); color:var(--text); padding:8px 10px; border-radius:7px; font-family:'DM Sans',sans-serif; font-size:0.8rem; outline:none;">
+          <option value="warm">Warm lead (network)</option>
+          <option value="cold">Cold outreach</option>
+          <option value="organic">Organic / inbound</option>
+          <option value="referral">Referral</option>
+        </select>
+      </div>
+
+      <textarea class="notes-input" id="saleNotes" placeholder="Who bought, organization name, any context..."></textarea>
+      <button class="save-btn" style="margin-top:12px;" onclick="logSale()">🎯 Log This Sale</button>
+
+      <!-- Running totals by bundle -->
+      <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
+        <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:10px;">Sales by bundle</div>
+        <div id="bundleBreakdown" style="font-size:0.78rem; color:var(--muted);">No sales logged yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="history-section">
+    <div class="section-title">Activity History</div>
+    <div id="historyContent">
+      <div class="empty-history">No activity logged yet. Start today.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const INVESTED = 321.62;
+const GOAL = 10000;
+const LAUNCH = new Date('2026-07-10');
+const SOFT_LAUNCH = new Date('2026-04-28');
+
+let today = {
+  outreach: 0,
+  calls: 0,
+  followups: 0,
+  content: 0
+};
+
+// Load from localStorage
+function loadState() {
+  try {
+    const s = localStorage.getItem('twg_activity');
+    return s ? JSON.parse(s) : { days: [], sales: [] };
+  } catch(e) { return { days: [], sales: [] }; }
+}
+
+function saveState(state) {
+  localStorage.setItem('twg_activity', JSON.stringify(state));
+}
+
+function getTodayKey() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  // Dates
+  const now = new Date();
+  const daysToLaunch = Math.max(0, Math.ceil((LAUNCH - now) / (1000*60*60*24)));
+  const daysToSoft = Math.max(0, Math.ceil((SOFT_LAUNCH - now) / (1000*60*60*24)));
+
+  document.getElementById('daysLeft').textContent = daysToSoft;
+  document.getElementById('daysRemaining').textContent = daysToLaunch;
+
+  document.getElementById('todayDate').textContent = now.toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+  });
+
+  // Load any existing entry for today
+  const state = loadState();
+  const todayKey = getTodayKey();
+  const existingToday = state.days.find(d => d.date === todayKey);
+  if (existingToday) {
+    today = { ...existingToday };
+    document.getElementById('outreachVal').textContent = today.outreach || 0;
+    document.getElementById('callsVal').textContent = today.calls || 0;
+    document.getElementById('followupsVal').textContent = today.followups || 0;
+    document.getElementById('contentVal').textContent = today.content || 0;
+    document.getElementById('activityNotes').value = today.notes || '';
+    updatePaceIndicators();
+  }
+
+  updateRevenue(state);
+  renderHistory(state);
+  renderBundleBreakdown(state);
+}
+
+// ============================================================
+// COUNTERS
+// ============================================================
+function adjust(field, delta) {
+  today[field] = Math.max(0, (today[field] || 0) + delta);
+  document.getElementById(field + 'Val').textContent = today[field];
+  updatePaceIndicators();
+}
+
+function updatePaceIndicators() {
+  // Outreach: target 5/day
+  const outEl = document.getElementById('outreachPace');
+  if (today.outreach >= 5) { outEl.className = 'pace-indicator pace-on'; outEl.textContent = '✓ on pace'; }
+  else if (today.outreach > 0) { outEl.className = 'pace-indicator pace-off'; outEl.textContent = `${5 - today.outreach} to go`; }
+  else { outEl.className = 'pace-indicator pace-na'; outEl.textContent = '—'; }
+
+  // Content: target 1/day
+  const conEl = document.getElementById('contentPace');
+  if (today.content >= 1) { conEl.className = 'pace-indicator pace-on'; conEl.textContent = '✓ done'; }
+  else { conEl.className = 'pace-indicator pace-na'; conEl.textContent = '—'; }
+
+  // Calls — just show count, no daily target
+  const callEl = document.getElementById('callsPace');
+  if (today.calls > 0) { callEl.className = 'pace-indicator pace-on'; callEl.textContent = `${today.calls} today`; }
+  else { callEl.className = 'pace-indicator pace-na'; callEl.textContent = '—'; }
+}
+
+// ============================================================
+// SAVE ACTIVITY
+// ============================================================
+function saveActivity() {
+  const state = loadState();
+  const todayKey = getTodayKey();
+
+  today.notes = document.getElementById('activityNotes').value;
+  today.date = todayKey;
+
+  const idx = state.days.findIndex(d => d.date === todayKey);
+  if (idx >= 0) {
+    state.days[idx] = { ...today };
+  } else {
+    state.days.unshift({ ...today });
+  }
+
+  saveState(state);
+  renderHistory(state);
+  showToast('Activity saved ✓');
+}
+
+// ============================================================
+// LOG SALE
+// ============================================================
+function logSale() {
+  const amount = parseInt(document.getElementById('bundleSold').value);
+  const type = document.getElementById('customerType').value;
+  const notes = document.getElementById('saleNotes').value;
+
+  const bundleNames = {
+    97: 'Bundle 1 · Coach HR Starter',
+    122: 'Bundle 2 · Parent & Athlete',
+    147: 'Bundle 3 · Compliance Master',
+    297: 'Full Stack (All 3)'
+  };
+
+  const state = loadState();
+  state.sales.unshift({
+    date: getTodayKey(),
+    amount,
+    bundle: bundleNames[amount],
+    type,
+    notes
+  });
+
+  saveState(state);
+  document.getElementById('saleNotes').value = '';
+  updateRevenue(state);
+  renderHistory(state);
+  renderBundleBreakdown(state);
+  showToast(`🎯 $${amount} sale logged!`);
+}
+
+// ============================================================
+// REVENUE
+// ============================================================
+function updateRevenue(state) {
+  const total = (state.sales || []).reduce((sum, s) => sum + s.amount, 0);
+  const totalSales = (state.sales || []).length;
+  const toBreakeven = Math.max(0, INVESTED - total);
+  const to10k = Math.max(0, GOAL - total);
+  const pct = Math.min(100, (total / GOAL) * 100);
+
+  document.getElementById('totalRevenue').textContent = '$' + total.toFixed(0);
+  document.getElementById('totalSales').textContent = totalSales;
+  document.getElementById('toBreakeven').textContent = toBreakeven > 0 ? '$' + toBreakeven.toFixed(0) : '✓ Done';
+  document.getElementById('to10k').textContent = '$' + to10k.toFixed(0);
+  document.getElementById('revenueBar').style.width = pct + '%';
+}
+
+// ============================================================
+// BUNDLE BREAKDOWN
+// ============================================================
+function renderBundleBreakdown(state) {
+  const sales = state.sales || [];
+  if (!sales.length) {
+    document.getElementById('bundleBreakdown').innerHTML = 'No sales logged yet.';
+    return;
+  }
+
+  const counts = {};
+  const totals = {};
+  sales.forEach(s => {
+    counts[s.bundle] = (counts[s.bundle] || 0) + 1;
+    totals[s.bundle] = (totals[s.bundle] || 0) + s.amount;
+  });
+
+  const html = Object.entries(counts).map(([bundle, count]) =>
+    `<div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="color:var(--text);">${bundle}</span>
+      <span style="color:var(--gold);">${count}× · $${totals[bundle]}</span>
+    </div>`
+  ).join('');
+
+  document.getElementById('bundleBreakdown').innerHTML = html;
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+function renderHistory(state) {
+  const days = state.days || [];
+  const sales = state.sales || [];
+
+  if (!days.length && !sales.length) {
+    document.getElementById('historyContent').innerHTML =
+      '<div class="empty-history">No activity logged yet. Start today.</div>';
+    return;
+  }
+
+  // Merge days and sales by date
+  const allDates = new Set([
+    ...days.map(d => d.date),
+    ...sales.map(s => s.date)
+  ]);
+
+  const sorted = [...allDates].sort((a, b) => b.localeCompare(a));
+
+  let html = `<table class="history-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Outreach</th>
+        <th>Calls</th>
+        <th>Content</th>
+        <th>Sales</th>
+        <th>Revenue</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  sorted.forEach(date => {
+    const day = days.find(d => d.date === date);
+    const daySales = sales.filter(s => s.date === date);
+    const dayRevenue = daySales.reduce((sum, s) => sum + s.amount, 0);
+
+    const displayDate = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric'
+    });
+
+    const outreach = day?.outreach || 0;
+    const calls = day?.calls || 0;
+    const content = day?.content || 0;
+    const notes = day?.notes || '';
+
+    const outreachColor = outreach >= 5 ? 'dot-green' : outreach > 0 ? 'dot-gold' : 'dot-red';
+    const contentColor = content >= 1 ? 'dot-green' : 'dot-red';
+
+    const salesDisplay = daySales.length > 0
+      ? daySales.map(s => `<span class="tag">${s.amount === 297 ? 'Full Stack' : 'Bundle ' + (s.amount === 97 ? '1' : s.amount === 122 ? '2' : '3')}</span>`).join(' ')
+      : '<span style="color:var(--border)">—</span>';
+
+    html += `<tr>
+      <td style="color:var(--muted); white-space:nowrap;">${displayDate}</td>
+      <td><span class="dot ${outreachColor}"></span>${outreach}</td>
+      <td>${calls > 0 ? calls : '<span style="color:var(--border)">—</span>'}</td>
+      <td><span class="dot ${contentColor}"></span>${content}</td>
+      <td>${salesDisplay}</td>
+      <td style="color:${dayRevenue > 0 ? 'var(--green)' : 'var(--border)'};">${dayRevenue > 0 ? '$' + dayRevenue : '—'}</td>
+      <td style="color:var(--muted); font-size:0.72rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${notes}">${notes || '—'}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('historyContent').innerHTML = html;
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+init();
+</script>
+</body>
+</html>
