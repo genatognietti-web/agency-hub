@@ -1871,8 +1871,7 @@ async function runStandup() {
   const start = new Date('2026-04-11');
   const day = Math.max(1, Math.floor((new Date() - start) / (1000 * 60 * 60 * 24)) + 1);
 
-  const kickoff = `Today is ${today}, Day ${day} of 90. Products built, revenue at $0, need first paying customer. Stripe is set up. Website design in progress (ready Friday). Run standup.`;
-
+const kickoff = `Today is ${today}, Day ${day} of 90. Pricing is CONFIRMED and LOCKED — $97 / $122 / $147 / $297 full stack. Stripe is set up. Products built. OneDrive delivery folders in progress. Need first paying customer by May 5. Run standup.`;
   try {
     // Ellara leads
     const ellaraText = await gcFetch('ellara', [{ role: 'user', content: kickoff }], true);
@@ -2248,8 +2247,13 @@ Example format:
 
     if (!response.ok) throw new Error('Tracker sync failed: ' + response.status);
     const data = await response.json();
-    const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
-    const updates = JSON.parse(raw);
+    let rawText = data.content[0].text.trim();
+// Strip markdown fences
+rawText = rawText.replace(/```json|```/g, '').trim();
+// Extract just the JSON object if there's surrounding text
+const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+if (!jsonMatch) throw new Error('No JSON object found in tracker sync response');
+const updates = JSON.parse(jsonMatch[0]);
 
     let changed = 0;
     const githubUpdates = {};
