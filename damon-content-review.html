@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Damon — Content Review</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #222;
+    --accent: #e8ff47;
+    --accent2: #ff4757;
+    --text: #f0f0f0;
+    --muted: #666;
+    --damon: #e8ff47;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NOISE TEXTURE */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #b8cc00);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: #0a0a0a;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .avatar::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+    opacity: 0.4;
+  }
+
+  .header-text h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .header-text h1 span {
+    color: var(--accent);
+  }
+
+  .header-text p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+  }
+
+  /* PLATFORM TABS */
+  .platform-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .platform-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 8px 18px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+
+  .tab:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0a0a;
+    font-weight: 600;
+  }
+
+  /* INPUT AREA */
+  .input-section {
+    margin-bottom: 24px;
+  }
+
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 1.7;
+    padding: 20px;
+    resize: vertical;
+    min-height: 160px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  textarea::placeholder {
+    color: #333;
+  }
+
+  textarea:focus {
+    border-color: var(--accent);
+  }
+
+  .char-count {
+    text-align: right;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* ANALYZE BTN */
+  .analyze-btn {
+    width: 100%;
+    padding: 18px;
+    background: var(--accent);
+    border: none;
+    border-radius: 4px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: #0a0a0a;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .analyze-btn:hover:not(:disabled) {
+    background: #d4eb2a;
+    transform: translateY(-1px);
+  }
+
+  .analyze-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* LOADING */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 48px 0;
+  }
+
+  .loading.active { display: block; }
+
+  .loading-dots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); opacity: 0.4; }
+    50% { transform: translateY(-8px); opacity: 1; }
+  }
+
+  .loading p {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* RESULTS */
+  .results {
+    display: none;
+    animation: fadeUp 0.4s ease;
+  }
+
+  .results.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SCORE BANNER */
+  .score-banner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .score-banner::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--accent);
+  }
+
+  .score-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .score-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .score-verdict {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  /* METRIC BARS */
+  .metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 500px) {
+    .metrics { grid-template-columns: 1fr; }
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 18px;
+  }
+
+  .metric-name {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .metric-bar-bg {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .metric-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .metric-bar-fill.low { background: var(--accent2); }
+  .metric-bar-fill.mid { background: #ff9f43; }
+
+  .metric-score {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--text);
+  }
+
+  /* CRITIQUE SECTIONS */
+  .critique-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    margin-bottom: 12px;
+  }
+
+  .critique-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .tag-hook { background: #1a1a2e; color: #818cf8; border: 1px solid #2d2d5e; }
+  .tag-cut { background: #1f0a0a; color: var(--accent2); border: 1px solid #3d1515; }
+  .tag-amplify { background: #0a1a0a; color: #4ade80; border: 1px solid #153515; }
+  .tag-anchor { background: #1a140a; color: #fbbf24; border: 1px solid #3d2e10; }
+  .tag-rewrite { background: #1a0a1a; color: #e879f9; border: 1px solid #3d153d; }
+
+  .critique-text {
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 1.8;
+    color: #ccc;
+  }
+
+  .critique-text strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* REWRITE BOX */
+  .rewrite-box {
+    background: #0f0f0a;
+    border: 1px solid #2a2a15;
+    border-radius: 4px;
+    padding: 20px;
+    margin-top: 16px;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.7;
+    color: #e8e8d0;
+    font-style: italic;
+    position: relative;
+  }
+
+  .rewrite-box::before {
+    content: '"';
+    position: absolute;
+    top: 8px;
+    left: 14px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--accent);
+    opacity: 0.4;
+    line-height: 1;
+  }
+
+  /* DAMON SIGN OFF */
+  .signoff {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .signoff-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #b8cc00);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    color: #0a0a0a;
+    flex-shrink: 0;
+  }
+
+  .signoff-text {
+    font-size: 12px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* ERROR */
+  .error-block {
+    display: none;
+    background: #1f0a0a;
+    border: 1px solid #3d1515;
+    border-radius: 4px;
+    padding: 20px;
+    color: var(--accent2);
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .error-block.active { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="avatar">DH</div>
+    <div class="header-text">
+      <h1>DAMON <span>HAIN</span></h1>
+      <p>Chief Brand & Content Director — The Whole Game / The Agency</p>
+    </div>
+  </div>
+
+  <!-- PLATFORM SELECT -->
+  <div class="platform-label">Platform</div>
+  <div class="platform-tabs">
+    <button class="tab active" data-platform="Instagram">Instagram</button>
+    <button class="tab" data-platform="TikTok">TikTok</button>
+    <button class="tab" data-platform="LinkedIn">LinkedIn</button>
+    <button class="tab" data-platform="Facebook">Facebook</button>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-section">
+    <textarea id="postInput" placeholder="Paste your caption, hook, or post copy here. The rawer the better — Damon will tell you exactly what's working and what's not."></textarea>
+    <div class="char-count"><span id="charCount">0</span> characters</div>
+  </div>
+
+  <button class="analyze-btn" id="analyzeBtn" disabled>
+    ▶ SEND TO DAMON
+  </button>
+
+  <!-- ERROR -->
+  <div class="error-block" id="errorBlock"></div>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="loading-dots">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+    <p>Damon's reading this. He already has notes.</p>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results"></div>
+
+</div>
+
+<script>
+  const textarea = document.getElementById('postInput');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const charCount = document.getElementById('charCount');
+  const loading = document.getElementById('loading');
+  const results = document.getElementById('results');
+  const errorBlock = document.getElementById('errorBlock');
+
+  let selectedPlatform = 'Instagram';
+
+  // Platform tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      selectedPlatform = tab.dataset.platform;
+    });
+  });
+
+  // Textarea
+  textarea.addEventListener('input', () => {
+    const len = textarea.value.length;
+    charCount.textContent = len;
+    analyzeBtn.disabled = len < 10;
+  });
+
+  // Analyze
+  analyzeBtn.addEventListener('click', analyze);
+
+  async function analyze() {
+    const post = textarea.value.trim();
+    if (!post) return;
+
+    analyzeBtn.disabled = true;
+    loading.classList.add('active');
+    results.classList.remove('active');
+    results.innerHTML = '';
+    errorBlock.classList.remove('active');
+
+    const systemPrompt = `You are Damon Hain, Chief Brand & Content Director for The Whole Game — an HR-in-a-box platform for youth sports leagues. You are part of "The Agency," an AI leadership team.
+
+Your role: analyze social media content and give brutally honest, strategically sharp feedback. You apply principles from Contagious (Jonah Berger), $100M Offers (Alex Hormozi), and Mindset (Carol Dweck).
+
+Your instincts:
+- "Would someone actually stop scrolling for this?"
+- "Is this clear, or just clever?"
+- "Does this make people feel something or learn something?"
+- "Why would someone share this?"
+- "Does this have a revenue anchor?"
+
+Your personality: charismatic, direct, culturally sharp. You don't sugarcoat. You care about results, not feelings.
+
+You MUST respond in valid JSON ONLY — no preamble, no markdown, no extra text. Here is the exact structure:
+
+{
+  "overallScore": <number 1-10>,
+  "verdict": "<one sharp sentence, max 12 words, your gut read>",
+  "hookScore": <number 1-10>,
+  "scrollStopScore": <number 1-10>,
+  "clarityScore": <number 1-10>,
+  "conversionScore": <number 1-10>,
+  "hookAnalysis": "<2-3 sentences: is the hook strong? Why or why not?>",
+  "whatToCut": "<specific phrases or elements to cut and why>",
+  "whatToAmplify": "<what's actually working — amplify this>",
+  "revenueAnchor": "<does this tie to a product or CTA? What's missing or what works?>",
+  "rewrite": "<a rewritten version of the hook or first 1-2 lines, as Damon would write it — punchy, platform-appropriate>"
+}`;
+
+    const userMessage = `Platform: ${selectedPlatform}\n\nPost to review:\n${post}`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': '',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-allow-browser': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userMessage }]
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.error) throw new Error(data.error.message);
+
+      const raw = data.content[0].text;
+      const clean = raw.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      renderResults(parsed);
+
+    } catch (err) {
+      errorBlock.textContent = 'Something went wrong: ' + err.message;
+      errorBlock.classList.add('active');
+    } finally {
+      loading.classList.remove('active');
+      analyzeBtn.disabled = false;
+    }
+  }
+
+  function scoreColor(n) {
+    if (n <= 4) return 'low';
+    if (n <= 6) return 'mid';
+    return '';
+  }
+
+  function renderResults(d) {
+    const scoreColor = d.overallScore <= 4 ? '#ff4757' : d.overallScore <= 6 ? '#ff9f43' : '#e8ff47';
+
+    results.innerHTML = `
+      <!-- SCORE BANNER -->
+      <div class="score-banner">
+        <div class="score-number" style="color:${scoreColor}">${d.overallScore}<span style="font-size:28px;opacity:0.4">/10</span></div>
+        <div>
+          <div class="score-label">Overall Score — ${selectedPlatform}</div>
+          <div class="score-verdict">${d.verdict}</div>
+        </div>
+      </div>
+
+      <!-- METRICS -->
+      <div class="metrics">
+        ${renderMetric('Hook Strength', d.hookScore)}
+        ${renderMetric('Scroll Stop', d.scrollStopScore)}
+        ${renderMetric('Clarity', d.clarityScore)}
+        ${renderMetric('Conversion', d.conversionScore)}
+      </div>
+
+      <!-- HOOK ANALYSIS -->
+      <div class="critique-block">
+        <div class="critique-label"><span class="tag tag-hook">HOOK</span> First Line Analysis</div>
+        <div class="critique-text">${d.hookAnalysis}</div>
+      </div>
+
+      <!-- WHAT TO CUT -->
+      <div class="critique-block">
+        <div class="critique-label"><span class="tag tag-cut">CUT THIS</span></div>
+        <div class="critique-text">${d.whatToCut}</div>
+      </div>
+
+      <!-- WHAT TO AMPLIFY -->
+      <div class="critique-block">
+        <div class="critique-label"><span class="tag tag-amplify">AMPLIFY</span></div>
+        <div class="critique-text">${d.whatToAmplify}</div>
+      </div>
+
+      <!-- REVENUE ANCHOR -->
+      <div class="critique-block">
+        <div class="critique-label"><span class="tag tag-anchor">REVENUE ANCHOR</span></div>
+        <div class="critique-text">${d.revenueAnchor}</div>
+      </div>
+
+      <!-- REWRITE -->
+      <div class="critique-block">
+        <div class="critique-label"><span class="tag tag-rewrite">DAMON'S REWRITE</span> Hook / Opening</div>
+        <div class="rewrite-box">${d.rewrite}</div>
+      </div>
+
+      <!-- SIGN OFF -->
+      <div class="signoff">
+        <div class="signoff-avatar">DH</div>
+        <div class="signoff-text">— Damon Hain, Chief Brand & Content Director, The Agency</div>
+      </div>
+    `;
+
+    results.classList.add('active');
+
+    // Animate bars
+    setTimeout(() => {
+      animateBar('bar-hook', d.hookScore);
+      animateBar('bar-scroll', d.scrollStopScore);
+      animateBar('bar-clarity', d.clarityScore);
+      animateBar('bar-conversion', d.conversionScore);
+    }, 100);
+  }
+
+  function renderMetric(label, score) {
+    const key = label.toLowerCase().replace(/\s/g, '-');
+    const cls = score <= 4 ? 'low' : score <= 6 ? 'mid' : '';
+    return `
+      <div class="metric-card">
+        <div class="metric-name">${label}</div>
+        <div class="metric-bar-bg">
+          <div class="metric-bar-fill ${cls}" id="bar-${key}" style="width:0%"></div>
+        </div>
+        <div class="metric-score">${score}<span style="font-size:14px;opacity:0.4">/10</span></div>
+      </div>
+    `;
+  }
+
+  function animateBar(id, score) {
+    const el = document.getElementById(id);
+    if (el) el.style.width = (score * 10) + '%';
+  }
+</script>
+</body>
+</html>
