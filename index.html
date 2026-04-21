@@ -1908,7 +1908,56 @@ async function runStandup() {
   }
 }
 
-async function sendGcReply() {
+async function detectAndUpdateTask(userMessage, ellaraReply) {
+  const taskList = [
+    ...tasks.phase1,
+    ...tasks.phase2,
+    ...tasks.phase3
+  ].filter(t => !t.done).map(t => `${t.id}: ${t.text}`).join('\n');
+
+  try {
+    const res = await fetch('/.netlify/functions/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 50,
+        system: `You are a task completion detector. Given a user message and a list of open tasks, determine if the user just completed one of the tasks. Respond with ONLY a JSON object like {"taskId":"p1_d1"} if a task was completed, or {"taskId":null} if not. No explanation, no markdown, just the JSON.`,
+        messages: [{
+          role: 'user',
+          content: `User said: "${userMessage}"\n\nOpen tasks:\n${taskList}\n\nDid the user just complete one of these tasks?`
+        }]
+      })
+    });
+
+    if (!res.ok) return;
+    const data = await res.json();
+    const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
+    const result = JSON.parse(raw);
+
+    if (result.taskId) {
+      let updated = false;
+      ['phase1','phase2','phase3'].forEach(phase => {
+        const task = tasks[phase].find(t => t.id === result.taskId);
+        if (task && !task.done) {
+          task.done = true;
+          updated = true;
+        }
+      });
+
+      if (updated) {
+        saveTasks();
+        buildTaskList();
+        updateStats();
+        await commitMemoryToGitHub({ [result.taskId]: true }, null, null);
+        gcAddMsg('ellara', '✓ Tracker updated — task marked complete and synced to GitHub.');
+      }
+    }
+  } catch(e) {
+    // Silent fail
+  }
+}
+  async function sendGcReply() {
   if (!apiKey) { openModal(); return; }
   const input = document.getElementById('gcInput');
   const btn = document.getElementById('gcSendBtn');
@@ -1951,30 +2000,8 @@ Only include this if you are confident a specific task from the tracker was comp
 
     const taskUpdateMatch = reply.match(/TASK_UPDATE:(\{[^}]+\})/);
     if (taskUpdateMatch) {
-      try {
-        const update = JSON.parse(taskUpdateMatch[1]);
-        reply = reply.replace(/\nTASK_UPDATE:\{[^}]+\}/, '').trim();
-
-        let updated = false;
-        ['phase1','phase2','phase3'].forEach(phase => {
-          const task = tasks[phase].find(t => t.id === update.taskId);
-          if (task && task.done !== update.done) {
-            task.done = update.done;
-            updated = true;
-          }
-        });
-
-        if (updated) {
-          saveTasks();
-          buildTaskList();
-          updateStats();
-          await commitMemoryToGitHub({ [update.taskId]: update.done }, null, null);
-          reply += '\n\n✓ Tracker updated.';
-        }
-      } catch(e) {
-        // Silent fail on parse error
-      }
-    }
+      // Detect task completion via separate focused API call
+await detectAndUpdateTask(text, reply);
 
     gcRemoveTyping('ellara');
     gcAddMsg('ellara', reply);
